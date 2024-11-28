@@ -57,4 +57,8 @@ foreach(hw_config ${hw_config_list})
                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
    target_link_libraries(     pimple_${hw_config} PRIVATE ${hw_target_libs})
 
+   if(${hw_config} STREQUAL "NATIVE")
+      add_subdirectory(AMPLE/Test)
+   endif()
+
 endforeach()

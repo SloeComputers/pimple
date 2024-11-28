@@ -26,7 +26,6 @@
 
 #include "STB/Fifo.h"
 #include "AMPLE/Types.h"
-#include "AMPLE/Lex.h"
 #include "AMPLE/Machine.h"
 
 #define DBG if (0) printf
@@ -40,11 +39,15 @@ public:
 
    void run(bool echo_)
    {
+      printf("AMPLE re-code\n");
+
       while(true)
       {
+         char line[256];
+
          printf(" %%");
 
-         lex.clear();
+         unsigned i = 0;
 
          while(true)
          {
@@ -58,47 +61,15 @@ public:
             if (ch == '\n')
                break;
 
-            lex.push(ch);
+            line[i++] = ch;
          }
 
-         parse();
+         line[i] = '\0';
+
+         mc.run(line);
       }
    }
 
-private:
-   void parse()
-   {
-      while(true)
-      {
-         switch(lex.next())
-         {
-         case Lex::NUMBER:
-            DBG("NUM: %d\n", lex.number());
-            mc.push(lex.number());
-            break;
-
-         case Lex::STRING:
-            DBG("STR: \"%s\"\n", lex.string());
-            mc.pushStr(lex.string());
-            break;
-
-         case Lex::WORD:
-            DBG("WRD: <%s>\n", lex.word());
-            mc.word(lex.string());
-            break;
-
-         case Lex::END:
-            DBG("END:\n");
-            return;
-
-         case Lex::ERROR:
-            printf("%s\n", lex.error());
-            return;
-         }
-      }
-   }
-
-   Lex     lex{};
    Machine mc{};
 };
 

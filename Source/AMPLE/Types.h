@@ -29,11 +29,5 @@ namespace AMPLE {
 
 using Number  = int16_t;
 using Address = uint16_t;
-using String  = char[32];
-
-static bool eq(const char* a_, const char* b_)
-{
-   return strcmp(a_, b_) == 0;
-}
 
 }

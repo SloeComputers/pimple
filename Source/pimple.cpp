@@ -25,8 +25,8 @@
 #include <cstdio>
 
 #include "hw/hw.h"
+#include "AMPLE/Shell.h"
 
-#include "AMPLE.h"
 #include "Synth.h"
 #include "Voice.h"
 
@@ -141,9 +141,13 @@ int main()
 
    audio.start();
 
-   AMPLE ample{};
+   AMPLE::Shell shell{};
 
-   ample.shell();
+#if defined(HW_NATIVE)
+   shell.run(/* echo */ false);
+#else
+   shell.run(/* echo */ true);
+#endif
 
    return 0;
 }

@@ -20,19 +20,14 @@
 #  SOFTWARE.
 #-------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.19.1)
 
-project(PIMPLE
-        LANGUAGES CXX C ASM
-        VERSION 0.1)
+add_library(AMPLE STATIC
+            Ensemble.cpp)
 
-include(CTest)
+target_include_directories(AMPLE
+   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+   )
 
-add_subdirectory(Platform)
-
-add_subdirectory(Source)
-
-if(${PLT_TARGET} STREQUAL rpipico OR ${PLT_TARGET} STREQUAL rpipico2)
-   # TODO automate conversion of VERSION to hex
-   target_compile_definitions(MTL PUBLIC PLT_BCD_VERSION=0x0001)
-endif()
+target_link_libraries(AMPLE
+   PUBLIC STB
+   )

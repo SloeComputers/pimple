@@ -20,6 +20,8 @@
 #  SOFTWARE.
 #-------------------------------------------------------------------------------
 
+add_subdirectory(AMPLE)
+
 set(python_path ${CMAKE_CURRENT_SOURCE_DIR}/../Platform/python)
 
 add_custom_command(
@@ -55,7 +57,7 @@ foreach(hw_config ${hw_config_list})
    target_include_directories(pimple_${hw_config}
                               PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-   target_link_libraries(     pimple_${hw_config} PRIVATE ${hw_target_libs})
+   target_link_libraries(     pimple_${hw_config} PRIVATE AMPLE ${hw_target_libs})
 
    if(${hw_config} STREQUAL "NATIVE")
       add_subdirectory(AMPLE/Test)

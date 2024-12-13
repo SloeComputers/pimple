@@ -34,8 +34,8 @@ class Dict
 public:
    Dict() = default;
 
-   //! Get fullness leve
-   size_t level() const { return heap.level(); }
+   //! Get number allocated
+   size_t allocated() const { return heap.allocated(); }
 
    //! Remove all entries from the dictionary
    void clear()

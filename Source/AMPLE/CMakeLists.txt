@@ -22,7 +22,7 @@
 
 
 add_library(AMPLE STATIC
-            Ensemble.cpp)
+            Sound.cpp)
 
 target_include_directories(AMPLE
    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}

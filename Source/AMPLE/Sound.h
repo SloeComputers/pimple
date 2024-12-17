@@ -28,17 +28,21 @@
 
 namespace AMPLE {
 
-struct Ensemble
+struct Sound
 {
 public:
-   Ensemble()
+   Sound()
    {
       allocPlayers(0);
    }
 
-   ~Ensemble()
+   ~Sound()
    {
       allocPlayers(0);
+   }
+
+   void reset()
+   {
    }
 
    Chan* getChan()

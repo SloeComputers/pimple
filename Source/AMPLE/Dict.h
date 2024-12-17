@@ -22,15 +22,153 @@
 
 #pragma once
 
+#include <array>
 #include <cstdio>
 
 #include "STB/Heap.h"
+#include "STB/BitArray.h"
 
 namespace AMPLE {
 
-template <typename TYPE, size_t NUM_NODES>
+template <typename TYPE, size_t NUM_STATES>
 class Dict
 {
+   template <typename VALUE, typename SYMBOL, SYMBOL LOWEST, SYMBOL HIGHEST>
+   class DFAState : public STB::List<DFAState<VALUE,SYMBOL,LOWEST,HIGHEST>>::Elem
+   {
+   public:
+      DFAState() = default;
+
+      DFAState(size_t index_)
+         : index(index_)
+      {
+      }
+
+      //! State has no exit transitions
+      bool is_final() const { return num_trans == 0; }
+
+      //! State can terminate a sequence
+      bool is_terminal() const { return terminal; }
+
+      //! State is the destination of more than one transition
+      bool is_shared() const { return shared; }
+
+      //! Value of state when it is terminal
+      const VALUE& get_value() const { return value; }
+
+      //! Clear state to initial condition
+      void clear()
+      {
+         set_non_terminal();
+         link(LOWEST, HIGHEST, nullptr);
+      }
+
+      //! Set the state as a terminal state with a value
+      void set(const VALUE& value_)
+      {
+         terminal = true;
+         value    = value_;
+      }
+
+      void set_non_terminal()
+      {
+         terminal = false;
+      }
+
+      //! Add a tranition for a range of characters
+      void link(SYMBOL lo_, SYMBOL hi_, DFAState* next_)
+      {
+         for(SYMBOL symbol = lo_; symbol <= hi_; symbol++)
+         {
+            link(symbol, next_);
+         }
+      }
+
+      //! Add a tranition for a single character
+      void link(SYMBOL symbol_, DFAState* next_)
+      {
+         if (valid(symbol_))
+         {
+            size_t index = symbol_ - LOWEST;
+
+            if (trans[index] != nullptr)
+               --num_trans;
+
+            trans[index] = next_;
+
+            if (next_ != nullptr)
+               ++num_trans;
+         }
+      }
+
+      //! Get next state for a symbol
+      DFAState* follow(SYMBOL symbol_)
+      {
+         if (not valid(symbol_))
+            return nullptr;
+
+         return trans[symbol_ - LOWEST];
+      }
+
+      void print_prep() const
+      {
+         if (not visited)
+            return;
+
+         visited = false;
+
+         for(size_t i = 0; i < NUM_CHARS; ++i)
+         {
+            if (trans[i] != nullptr)
+            {
+               trans[i]->print_prep();
+            }
+         }
+      }
+
+      void print() const
+      {
+         visited = true;
+
+         printf("%c%zu\n", terminal ? 'T' : 'S', index);
+
+         for(size_t i = 0; i < NUM_CHARS; ++i)
+         {
+            if (trans[i] != nullptr)
+            {
+               printf("'%c' -> %c%zu\n",
+                      SYMBOL(LOWEST + i),
+                      trans[i]->terminal ? 'T' : 'S',
+                      trans[i]->index);
+            }
+         }
+         printf("\n");
+
+         for(size_t i = 0; i < NUM_CHARS; ++i)
+         {
+            if ((trans[i] != nullptr) && (not trans[i]->visited))
+            {
+               trans[i]->print();
+            }
+         }
+      }
+
+   private:
+      static bool valid(uint8_t ch_) { return (ch_ >= LOWEST) && (ch_ <= HIGHEST); }
+
+      static const size_t NUM_CHARS = HIGHEST - LOWEST + 1;
+
+      bool         terminal{false};
+      bool         shared{false};
+      mutable bool visited{false};
+      size_t       index{0};
+      size_t       num_trans{0};
+      VALUE        value{};
+      DFAState*    trans[NUM_CHARS] = {};
+   };
+
+   using State = DFAState<TYPE,char,' ','~'>;
+
 public:
    Dict() = default;
 
@@ -40,102 +178,137 @@ public:
    //! Remove all entries from the dictionary
    void clear()
    {
-      root->child = nullptr;
+      index = 0;
+      root.clear();
       heap.reset();
    }
 
    //! Add a token to the dictionary
-   bool add(const char* token_, TYPE value_)
+   bool add(const char* token_, const TYPE& value_)
    {
-      Node* node = &root;
-      Node* state{};
+      return add(&root, token_, value_);
+   }
 
-      for(const char* s = token_; *s; ++s)
+   //! Recursive add of a token to the dictionary
+   bool add(State* state_, const char* s_, const TYPE& value_)
+   {
+      State*             next_{nullptr};
+      STB::BitArray<128> range{};
+      char               ch = *s_++;
+
+      switch(ch)
       {
-         Node* parent = node;
-         Range range;
+      case '\0':
+         state_->set(value_);
+         return true;
 
-         if (*s == '\\')
+      case '[':
+         while(*s_ != ']')
          {
-            // \: Escape speical meaning of next char
-            if (*++s == '\0') return false;
-            range = *s;
-         }
-         else if (*s == '+')
-         {
-            if (s[1] == '\0')
+            if (*s_ == '\0') return false;
+            char lower = *s_++;
+            if (*s_ == '-')
             {
-               parent->terminal = true;
-               parent->value    = value_;
+               s_++;
+               char upper = *s_++;
+               if (upper == '\0') return false;
+               range.set(lower, upper);
             }
+            else
+            {
+               range.set(lower);
+            }
+         }
+         s_++;
+         break;
 
-            node          = heap.alloc();
-            node->range   = parent->range;
-            node->child   = node;
-            parent->child = node;
-            continue;
-         }
-         else if (*s == '*')
-         {
-            node = parent;
-            node->child = node;
-            continue;
-         }
-         else if (*s == '[')
-         {
-            // [l-u]: Range of chars
-            if (*++s == '\0') return false;
-            range.lower = *s;
-            if (*++s != '-')  return false;
-            if (*++s == '\0') return false;
-            range.upper = *s;
-            if (*++s != ']') return false;
-         }
-         else if (*s == '.')
-         {
-            // .: Any printable char
-            range.lower = ' ';
-            range.upper = '~';
-         }
-         else
-         {
-            // Exactly match char
-            range = *s;
-         }
+      case '.':
+         range.set(' ', '~');
+         break;
 
-         state = parent->child;
+      case '+':
+         return false;
 
-         for(node = state; node != nullptr; node = node->next)
+      case '*':
+         return false;
+
+      case '\\':
+         ch = *s_++;
+         if (ch == '\0') return false;
+         break;
+
+      default:
+         break;
+      }
+
+      if (*s_ == '*')
+      {
+         next_ = state_;
+         s_++;
+      }
+
+      if (next_ == nullptr)
+      {
+         next_ = state_->follow(ch);
+         if (next_ == nullptr)
          {
-            if (node->match(*s))
-               break;
-         }
-
-         if (node == nullptr)
-         {
-            if (heap.empty())
-                return false;
-
-            node          = heap.alloc();
-            node->range   = range;
-            node->next    = state;
-            state         = node;
-            parent->child = state;
-         }
-
-         if ((s[1] == '*') && (s[2] == '\0'))
-         {
-            parent->terminal = true;
-            parent->value    = value_;
+            next_ = heap.alloc(++index);
          }
       }
 
-      if (node->terminal)
-         return false;
+      if (range.any())
+      {
+         for(char ch = ' '; ch <= '~'; ++ch)
+         {
+            if (range[ch])
+            {
+               state_->link(ch, next_);
+               if (*s_ == '+')
+                  next_->link(ch, next_);
+            }
+         }
+      }
+      else
+      {
+         state_->link(ch, next_);
+         if (*s_ == '+')
+            next_->link(ch, next_);
+      }
 
-      node->terminal = true;
-      node->value    = value_;
-      return true;
+      if (*s_ == '+')
+         s_++;
+
+      return add(next_, s_, value_);
+   }
+
+   //! Remove a tolen from the dictionary
+   const char* lookup(const char* input_, TYPE& value_)
+   {
+      State*      state   = &root;
+      State*      match   = nullptr;
+      const char* match_s = input_;
+
+      for(const char* s = input_; *s; ++s)
+      {
+         State* next = state->follow(*s);
+
+         if (next == nullptr)
+         {
+            break;
+         }
+         else if (next->is_terminal())
+         {
+            match   = next;
+            match_s = s + 1;
+         }
+
+         state = next;
+      }
+
+      if (match != nullptr)
+         value_ = match->get_value();
+
+      return match_s;
    }
 
    //! Remove a token from the dictionary
@@ -144,181 +317,59 @@ public:
       return remove(&root, token_);
    }
 
-   //! Remove a tolen from the dictionary
-   const char* lookup(const char* input_, TYPE& value_)
-   {
-      Node* node  = &root;
-      Node* match = nullptr;
-      const char* match_s{};
-      const char* s;
-
-      for(s = input_; *s; ++s)
-      {
-         Node* parent = node;
-
-         for(node = parent->child; node != nullptr; node = node->next)
-         {
-            if (node->match(*s))
-            {
-               if (node->terminal)
-               {
-                  match   = node;
-                  match_s = s;
-               }
-               break;
-            }
-         }
-
-         if (node == nullptr)
-         {
-            break;
-         }
-      }
-
-      if (match == nullptr)
-      {
-         return input_;
-      }
-
-      value_ = match->value;
-
-      return match_s + 1;
-   }
-
    //! Debug print dictionary structure
    void print() const
    {
-      print(root.child);
+      root.print_prep();
+      root.print();
    }
 
 private:
-   struct Range
+   //! Recursive fixed pattern removal
+   bool remove(State* state_, const char* s_)
    {
-      Range() = default;
+      char ch = *s_++;
 
-      char operator=(char ch_) { lower = upper = ch_; return ch_; }
+      // Fail for empty string
+      if (ch == '\0') return false;
 
-      bool match(char ch_) const { return ch_ >= lower && ch_ <= upper; }
+      State* next = state_->follow(ch);
 
-      char lower{'\0'};
-      char upper{'\0'};
-   };
+      // Fail for no match
+      if (next == nullptr) return false;
 
-   struct Node
-   {
-      Node() = default;
+      bool ok{false};
 
-      bool match(char ch_) const { return range.match(ch_); }
-
-      Range   range{};
-      bool    terminal{false};
-      TYPE    value{};
-      Node*   child{nullptr};
-      Node*   next{nullptr};
-   };
-
-   //! Recursive dictionary debug print
-   void print(const Node* state) const
-   {
-      printf("S%zu\n", heap.index(state));
-
-      for(const Node* n = state; n != nullptr; n = n->next)
+      if (*s_ == '\0')
       {
-         if (n->range.lower == n->range.upper)
+         // Fail for not a terminal state
+         if (next->is_terminal())
          {
-            printf("  [%c]   %c",
-                   n->range.lower,
-                   n->terminal ? 'T' : ' ');
-         }
-         else
-         {
-            printf("  [%c-%c] %c",
-                   n->range.lower, n->range.upper,
-                   n->terminal ? 'T' : ' ');
-         }
-
-         if (n->child)
-         {
-            printf(" => S%zu", heap.index(n->child));
-         }
-
-         printf("\n");
-      }
-
-      for(const Node* n = state; n != nullptr; n = n->next)
-      {
-         if (n->child && (n != n->child))
-         {
-            print(n->child);
+            next->set_non_terminal();
+            ok = true;
          }
       }
+      else
+      {
+         ok = remove(next, s_);
+      }
+
+      if (ok)
+      {
+         if (next->is_final())
+         {
+            assert(not state_->is_shared());
+            state_->link(ch, nullptr);
+            heap.free(state_);
+         }
+      }
+
+      return ok;
    }
 
-   //! Recursive pattern removal
-   bool remove(Node* parent, const char* token_)
-   {
-      Node* prev  = nullptr;
-      Node* state = parent->child;
-
-      for(Node* node = state; node != nullptr; node = node->next)
-      {
-         if (node->match(*token_))
-         {
-            if (token_[1] == '\0')
-            {
-               if (node->terminal)
-               {
-                  // Terminal node found
-                  node->terminal = false;
-
-                  // Remove node if not used by other patterns
-                  if (node->child == nullptr)
-                  {
-                     if (prev != nullptr)
-                        prev->next = node->next;
-                     else
-                        parent->child = node->next;
-                     heap.free(node);
-                  }
-
-                  return true;
-               }
-            }
-            else if (node->child)
-            {
-               if (remove(node, token_ + 1))
-               {
-                  // Terminal node found in children
-
-                  // Remove node if not used by other patterns
-                  if (not node->terminal && (node->child == nullptr))
-                  {
-                     if (prev != nullptr)
-                        prev->next = node->next;
-                     else
-                        parent->child = node->next;
-                     heap.free(node);
-                  }
-
-                  return true;
-               }
-            }
-            else
-            {
-               // XXX broken dictionary
-               // A non-terminal match with no children should not occur
-               break;
-            }
-         }
-
-         prev = node;
-      }
-
-      return false;
-   }
-
-   STB::Heap<Node,NUM_NODES> heap{};
-   Node                      root{};
+   size_t                      index{0};
+   State                       root{0};
+   STB::Heap<State,NUM_STATES> heap{};
 };
 
 } // namespace AMPLE

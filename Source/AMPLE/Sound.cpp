@@ -20,12 +20,12 @@
 // SOFTWARE.
 //------------------------------------------------------------------------------
 
-#include "Ensemble.h"
+#include "Sound.h"
 
 namespace AMPLE {
 
-STB::Heap<Player,Ensemble::MAX_PLAYERS> Ensemble::player_heap{};
-STB::Heap<Voice,Player::MAX_VOICES>     Player::voice_heap{};
-STB::Heap<Chan,Voice::MAX_CHANS>        Voice::chan_heap{};
+STB::Heap<Player,Sound::MAX_PLAYERS> Sound::player_heap{};
+STB::Heap<Voice,Player::MAX_VOICES>  Player::voice_heap{};
+STB::Heap<Chan,Voice::MAX_CHANS>     Voice::chan_heap{};
 
 } // namespace AMPLE

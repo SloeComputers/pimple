@@ -129,9 +129,7 @@ TEST(Dict, string)
 {
    AMPLE::Dict<unsigned,128> dict{};
 
-   EXPECT_TRUE(dict.add("\".*\"", 10));
-
-   dict.print();
+   EXPECT_TRUE(dict.add("\"[ !#-~]*\"", 10));
 
    unsigned value{0};
    const char* s;

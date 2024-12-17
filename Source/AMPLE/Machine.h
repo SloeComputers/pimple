@@ -23,13 +23,15 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdio>
 
 #include "STB/Stack.h"
 
 #include "Types.h"
 #include "Dict.h"
 #include "StrStack.h"
-#include "Ensemble.h"
+#include "Score.h"
+#include "Sound.h"
 
 namespace AMPLE {
 
@@ -38,257 +40,335 @@ class Machine
 public:
    Machine()
    {
-      builtin.add("\n",        &Machine::wordNOTHING);
-      builtin.add(" +",        &Machine::wordNOTHING);
+      addWord("\n",        &Machine::wordNOTHING);
+      addWord(" +",        &Machine::wordNOTHING);
 
-      builtin.add("\".*\"",    &Machine::wordSTRING);
+      addWord("\"[ !#-~]*\"", &Machine::wordSTRING);
 
-      builtin.add("#!",        &Machine::wordSTORE);
-      builtin.add("#\\*",      &Machine::wordNMUL);
-      builtin.add("#\\+",      &Machine::wordNADD);
-      builtin.add("#\\+!",     &Machine::wordMADD);
-      builtin.add("#-",        &Machine::wordNSUB);
-      builtin.add("#/",        &Machine::wordNDIV);
-      builtin.add("#11",       &Machine::wordNDUP);
-      builtin.add("#12",       &Machine::wordNSWAP);
-      builtin.add("#2",        &Machine::wordNDROP);
-      builtin.add("#212",      &Machine::wordNDUPPREV);
-      builtin.add("#2121",     &Machine::wordNDUP2);
-      builtin.add("#213",      &Machine::wordNROT);
-      builtin.add("#<",        &Machine::wordNLT);
-      builtin.add("#=",        &Machine::wordNEQ);
-      builtin.add("#>",        &Machine::wordNGT);
-      builtin.add("#?",        &Machine::wordNFETCH);
-      builtin.add("#B!",       &Machine::wordSTOREBYTE);
-      builtin.add("#B12",      &Machine::wordSWAPBYTES);
-      builtin.add("#B?",       &Machine::wordFETCHBYTE);
-      builtin.add("#IN",       &Machine::wordNIN);
-      builtin.add("#OUT",      &Machine::wordNOUT);
+      addWord("#!",        &Machine::wordSTORE);
+      addWord("#\\*",      &Machine::wordNMUL);
+      addWord("#\\+",      &Machine::wordNADD);
+      addWord("#\\+!",     &Machine::wordMADD);
+      addWord("#-",        &Machine::wordNSUB);
+      addWord("#/",        &Machine::wordNDIV);
+      addWord("#11",       &Machine::wordNDUP);
+      addWord("#12",       &Machine::wordNSWAP);
+      addWord("#2",        &Machine::wordNDROP);
+      addWord("#212",      &Machine::wordNDUPPREV);
+      addWord("#2121",     &Machine::wordNDUP2);
+      addWord("#213",      &Machine::wordNROT);
+      addWord("#<",        &Machine::wordNLT);
+      addWord("#=",        &Machine::wordNEQ);
+      addWord("#>",        &Machine::wordNGT);
+      addWord("#?",        &Machine::wordNFETCH);
+      addWord("#B!",       &Machine::wordSTOREBYTE);
+      addWord("#B12",      &Machine::wordSWAPBYTES);
+      addWord("#B?",       &Machine::wordFETCHBYTE);
+      addWord("#IN",       &Machine::wordNIN);
+      addWord("#OUT",      &Machine::wordNOUT);
 
-      builtin.add("$\\+",      &Machine::wordSADD);
-      builtin.add("$\\-",      &Machine::wordSPLIT);
-      builtin.add("$12",       &Machine::wordSSWAP);
-      builtin.add("$2",        &Machine::wordSDROP);
-      builtin.add("$CHAR",     &Machine::wordSCHAR);
-      builtin.add("$IN",       &Machine::wordSIN);
-      builtin.add("$OUT",      &Machine::wordSOUT);
-      builtin.add("$PAD",      &Machine::wordSPAD);
-      builtin.add("$REV",      &Machine::wordSREV);
-      builtin.add("$STR",      &Machine::wordSSTR);
-      builtin.add("$STRIP",    &Machine::wordSSTRIP);
+      addWord("$\\+",      &Machine::wordSADD);
+      addWord("$\\-",      &Machine::wordSPLIT);
+      addWord("$12",       &Machine::wordSSWAP);
+      addWord("$2",        &Machine::wordSDROP);
+      addWord("$CHAR",     &Machine::wordSCHAR);
+      addWord("$IN",       &Machine::wordSIN);
+      addWord("$OUT",      &Machine::wordSOUT);
+      addWord("$PAD",      &Machine::wordSPAD);
+      addWord("$REV",      &Machine::wordSREV);
+      addWord("$STR",      &Machine::wordSSTR);
+      addWord("$STRIP",    &Machine::wordSSTRIP);
 
-      builtin.add("%.*\n",     &Machine::wordNOTHING);
+      addWord("%.*\n",     &Machine::wordNOTHING);
 
-      builtin.add("&$STR",     &Machine::wordHSSTR);
-      builtin.add("&[A-F]+",   &Machine::wordHEXNUMBER);
-      builtin.add("&[A-F]+",   &Machine::wordHEXNUMBER);
-      builtin.add("&NOUT",     &Machine::wordHOUT);
-      builtin.add("&VAL",      &Machine::wordHVAL);
+      addWord("&$STR",     &Machine::wordHSSTR);
+      addWord("&[0-9A-F]+",&Machine::wordHEXNUMBER);
+      addWord("&[0-9A-F]+",&Machine::wordHEXNUMBER);
+      addWord("&NOUT",     &Machine::wordHOUT);
+      addWord("&VAL",      &Machine::wordHVAL);
 
-      builtin.add("'",         &Machine::wordBUILTIN);
+      addWord("'",         &Machine::wordBUILTIN);
 
-      builtin.add("(",         &Machine::wordSTARTGROUP);
+      addWord("(",         &Machine::wordSTARTGROUP);
 
-      builtin.add(")",         &Machine::wordENDGROUP);
-      builtin.add(")ELSE(",    &Machine::wordELSE);
-      builtin.add(")FOR",      &Machine::wordENDFOR);
-      builtin.add(")IF",       &Machine::wordENDIF);
-      builtin.add(")K",        &Machine::wordENDKEY);
-      builtin.add(")NOTE",     &Machine::wordENDNOTEG);
-      builtin.add(")PLAY",     &Machine::wordENDPLAY);
-      builtin.add(")REP",      &Machine::wordENDREP);
-      builtin.add(")REST",     &Machine::wordENDREST);
-      builtin.add(")TIE",      &Machine::wordENDTIE);
-      builtin.add(")UNTIL(",   &Machine::wordUNTIL);
+      addWord(")",         &Machine::wordENDGROUP);
+      addWord(")ELSE(",    &Machine::wordELSE);
+      addWord(")FOR",      &Machine::wordENDFOR);
+      addWord(")IF",       &Machine::wordENDIF);
+      addWord(")K",        &Machine::wordENDKEY);
+      addWord(")NOTE",     &Machine::wordENDNOTEG);
+      addWord(")PLAY",     &Machine::wordENDPLAY);
+      addWord(")REP",      &Machine::wordENDREP);
+      addWord(")REST",     &Machine::wordENDREST);
+      addWord(")TIE",      &Machine::wordENDTIE);
+      addWord(")UNTIL(",   &Machine::wordUNTIL);
 
-      builtin.add("\\*.*\n",   &Machine::wordSYSTEM);
-      builtin.add("\\+",       &Machine::wordSHARPEN);
-      builtin.add(",",         &Machine::wordLENGTH);
-      builtin.add("-",         &Machine::wordFLATTEN);
-      builtin.add("\\..*\n",   &Machine::wordBUFFER);
-      builtin.add("/",         &Machine::wordLENGTHEN);
-      builtin.add(":",         &Machine::wordPITCH);
-      builtin.add(";",         &Machine::wordVOICE);
-      builtin.add("<",         &Machine::wordOCTDOWN);
-      builtin.add("=",         &Machine::wordNATURALISE);
-      builtin.add(">",         &Machine::wordUPOCTAVE);
-      builtin.add("@",         &Machine::wordFINISH);
-      builtin.add("\\[",       &Machine::wordSTARTWORD);
-      builtin.add("]",         &Machine::wordENDWORD);
-      builtin.add("^",         &Machine::wordREST);
-      builtin.add("|",         &Machine::wordENDBAR);
+      addWord("\\*.*\n",   &Machine::wordSYSTEM);
+      addWord("\\+",       &Machine::wordSHARPEN);
+      addWord(",",         &Machine::wordLENGTH);
+      addWord("-",         &Machine::wordFLATTEN);
+      addWord("\\..*\n",   &Machine::wordBUFFER);
+      addWord("/",         &Machine::wordLENGTHEN);
+      addWord(":",         &Machine::wordOCTAVE);
+      addWord(";",         &Machine::wordVOICE);
+      addWord("<",         &Machine::wordOCTDOWN);
+      addWord("=",         &Machine::wordNATURALISE);
+      addWord(">",         &Machine::wordUPOCTAVE);
+      addWord("@",         &Machine::wordFINISH);
+      addWord("\\[",       &Machine::wordSTARTWORD);
+      addWord("]",         &Machine::wordENDWORD);
+      addWord("^",         &Machine::wordREST);
+      addWord("|",         &Machine::wordENDBAR);
 
-      builtin.add("[0-9]+",    &Machine::wordNUMBER);
-      builtin.add("-[0-9]+",   &Machine::wordNUMBER);
+      addWord("[0-9]+",    &Machine::wordNUMBER);
+      addWord("-[0-9]+",   &Machine::wordNUMBER);
 
-      builtin.add("[A-F]",     &Machine::wordNOTE);
-      builtin.add("[a-f]",     &Machine::wordNOTE);
+#if 0
+      addWord("[A-F]",     &Machine::wordNOTE);
+      addWord("[a-f]",     &Machine::wordNOTE);
+#else
+      addWord("a",         &Machine::wordNOTE);
+      addWord("b",         &Machine::wordNOTE);
+      addWord("c",         &Machine::wordNOTE);
+      addWord("d",         &Machine::wordNOTE);
+      addWord("e",         &Machine::wordNOTE);
+      addWord("f",         &Machine::wordNOTE);
+      addWord("g",         &Machine::wordNOTE);
+      addWord("A",         &Machine::wordNOTE);
+      addWord("B",         &Machine::wordNOTE);
+      addWord("C",         &Machine::wordNOTE);
+      addWord("D",         &Machine::wordNOTE);
+      addWord("E",         &Machine::wordNOTE);
+      addWord("F",         &Machine::wordNOTE);
+      addWord("G",         &Machine::wordNOTE);
+#endif
 
-      builtin.add("ADSR",      &Machine::wordADSR);
-      builtin.add("AGATE",     &Machine::wordAGATE);
-      builtin.add("AENV",      &Machine::wordAENV);
-      builtin.add("ALIGN",     &Machine::wordALIGN);
-      builtin.add("AMP",       &Machine::wordAMP);
-      builtin.add("AMPLE",     &Machine::wordAMPLE);
-      builtin.add("APPEND",    &Machine::wordAPPEND);
-      builtin.add("AND",       &Machine::wordAND);
-      builtin.add("ASC",       &Machine::wordASC);
-      builtin.add("ATTACK",    &Machine::wordATTACK);
+      addWord("ADSR",      &Machine::wordADSR);
+      addWord("AGATE",     &Machine::wordAGATE);
+      addWord("AENV",      &Machine::wordAENV);
+      addWord("ALIGN",     &Machine::wordALIGN);
+      addWord("AMP",       &Machine::wordAMP);
+      addWord("AMPLE",     &Machine::wordAMPLE);
+      addWord("APPEND",    &Machine::wordAPPEND);
+      addWord("AND",       &Machine::wordAND);
+      addWord("ASC",       &Machine::wordASC);
+      addWord("ATTACK",    &Machine::wordATTACK);
 
-      builtin.add("BAR",       &Machine::wordBAR);
+      addWord("BAR",       &Machine::wordBAR);
 
-      builtin.add("CHAN",      &Machine::wordCHAN);
-      builtin.add("CHANS",     &Machine::wordCHANS);
-      builtin.add("CLEAR",     &Machine::wordCLEAR);
-      builtin.add("CODE",      &Machine::wordCODE);
-      builtin.add("COMPACT",   &Machine::wordCOMPACT);
-      builtin.add("CYCLE",     &Machine::wordCYCLE);
+      addWord("CHAN",      &Machine::wordCHAN);
+      addWord("CHANS",     &Machine::wordCHANS);
+      addWord("CLEAR",     &Machine::wordCLEAR);
+      addWord("CODE",      &Machine::wordCODE);
+      addWord("COMPACT",   &Machine::wordCOMPACT);
+      addWord("CYCLE",     &Machine::wordCYCLE);
 
-      builtin.add("DECAY",     &Machine::wordDECAY);
-      builtin.add("DELETE",    &Machine::wordDELETE);
-      builtin.add("DURATION",  &Machine::wordDURATION);
+      addWord("DECAY",     &Machine::wordDECAY);
+      addWord("DELETE",    &Machine::wordDELETE);
+      addWord("DURATION",  &Machine::wordDURATION);
 
-      builtin.add("EBIG",      &Machine::wordEBIG);
-      builtin.add("EDIT",      &Machine::wordEDIT);
-      builtin.add("EGRAD",     &Machine::wordEGRAD);
-      builtin.add("ELEV",      &Machine::wordELEV);
-      builtin.add("EMOD",      &Machine::wordEMOD);
-      builtin.add("ESECT",     &Machine::wordESECT);
-      builtin.add("EVEN",      &Machine::wordEVEN);
+      addWord("EBIG",      &Machine::wordEBIG);
+      addWord("EDIT",      &Machine::wordEDIT);
+      addWord("EGRAD",     &Machine::wordEGRAD);
+      addWord("ELEV",      &Machine::wordELEV);
+      addWord("EMOD",      &Machine::wordEMOD);
+      addWord("ESECT",     &Machine::wordESECT);
+      addWord("EVEN",      &Machine::wordEVEN);
 
-      builtin.add("FAST",      &Machine::wordFAST);
-      builtin.add("FLUSH",     &Machine::wordFLUSH);
-      builtin.add("FM",        &Machine::wordFM);
-      builtin.add("FOR(",      &Machine::wordFOR);
-      builtin.add("FREEZE",    &Machine::wordFREEZE);
+      addWord("FAST",      &Machine::wordFAST);
+      addWord("FLUSH",     &Machine::wordFLUSH);
+      addWord("FM",        &Machine::wordFM);
+      addWord("FOR(",      &Machine::wordFOR);
+      addWord("FREEZE",    &Machine::wordFREEZE);
 
-      builtin.add("GATE",      &Machine::wordGATE);
-      builtin.add("GO",        &Machine::wordGO);
-      builtin.add("GVAR",      &Machine::wordGVAR);
+      addWord("GATE",      &Machine::wordGATE);
+      addWord("GO",        &Machine::wordGO);
+      addWord("GVAR",      &Machine::wordGVAR);
 
-      builtin.add("IDLE",      &Machine::wordIDLE);
-      builtin.add("IF",        &Machine::wordIF);
-      builtin.add("INDEX",     &Machine::wordINDEX);
-      builtin.add("INVERT",    &Machine::wordINVERT);
+      addWord("IDLE",      &Machine::wordIDLE);
+      addWord("IF",        &Machine::wordIF);
+      addWord("INDEX",     &Machine::wordINDEX);
+      addWord("INVERT",    &Machine::wordINVERT);
 
-      builtin.add("K(",        &Machine::wordKEY);
+      addWord("K(",        &Machine::wordKEY);
 
-      builtin.add("LEN",       &Machine::wordLEN);
-      builtin.add("LIST",      &Machine::wordLIST);
-      builtin.add("LOAD",      &Machine::wordLOAD);
+      addWord("LEN",       &Machine::wordLEN);
+      addWord("LIST",      &Machine::wordLIST);
+      addWord("LOAD",      &Machine::wordLOAD);
 
-      builtin.add("MAX",       &Machine::wordMAX);
-      builtin.add("MIN",       &Machine::wordMIN);
-      builtin.add("MODE",      &Machine::wordMODE);
+      addWord("MAX",       &Machine::wordMAX);
+      addWord("MIN",       &Machine::wordMIN);
+      addWord("MODE",      &Machine::wordMODE);
 
-      builtin.add("NEW",       &Machine::wordNEW);
-      builtin.add("NL",        &Machine::wordNL);
-      builtin.add("NOT",       &Machine::wordNOT);
-      builtin.add("NOTE(",     &Machine::wordNOTEG);
-      builtin.add("NOUT",      &Machine::wordNOUT);
+      addWord("NEW",       &Machine::wordNEW);
+      addWord("NL",        &Machine::wordNL);
+      addWord("NOT",       &Machine::wordNOT);
+      addWord("NOTE(",     &Machine::wordNOTEG);
+      addWord("NOUT",      &Machine::wordNOUT);
 
-      builtin.add("ODD",       &Machine::wordODD);
-      builtin.add("OFF",       &Machine::wordOFF);
-      builtin.add("OFFSET",    &Machine::wordOFFSET);
-      builtin.add("ON",        &Machine::wordON);
-      builtin.add("OR",        &Machine::wordOR);
+      addWord("ODD",       &Machine::wordODD);
+      addWord("OFF",       &Machine::wordOFF);
+      addWord("OFFSET",    &Machine::wordOFFSET);
+      addWord("ON",        &Machine::wordON);
+      addWord("OR",        &Machine::wordOR);
 
-      builtin.add("PAGE",      &Machine::wordPAGE);
-      builtin.add("PAIR",      &Machine::wordPAIR);
-      builtin.add("PENV",      &Machine::wordPENV);
-      builtin.add("PGATE",     &Machine::wordPGATE);
-      builtin.add("PITCH",     &Machine::wordPITCH);
-      builtin.add("PLAY(",     &Machine::wordPLAY);
-      builtin.add("PLAYERS",   &Machine::wordPLAYERS);
-      builtin.add("POS",       &Machine::wordPOS);
-      builtin.add("PRINT",     &Machine::wordPRINT);
-      builtin.add("PVAR",      &Machine::wordPVAR);
+      addWord("PAGE",      &Machine::wordPAGE);
+      addWord("PAIR",      &Machine::wordPAIR);
+      addWord("PENV",      &Machine::wordPENV);
+      addWord("PGATE",     &Machine::wordPGATE);
+      addWord("PITCH",     &Machine::wordPITCH);
+      addWord("PLAY(",     &Machine::wordPLAY);
+      addWord("PLAYERS",   &Machine::wordPLAYERS);
+      addWord("POS",       &Machine::wordPOS);
+      addWord("PRINT",     &Machine::wordPRINT);
+      addWord("PVAR",      &Machine::wordPVAR);
 
-      builtin.add("QKEY",      &Machine::wordQKEY);
+      addWord("QKEY",      &Machine::wordQKEY);
 
-      builtin.add("RAND?",     &Machine::wordRAND);
-      builtin.add("RAND!",     &Machine::wordSEED);
-      builtin.add("RELEASE",   &Machine::wordRELEASE);
-      builtin.add("REN",       &Machine::wordREN);
-      builtin.add("REP(",      &Machine::wordREP);
-      builtin.add("REPORT",    &Machine::wordREPORT);
-      builtin.add("REST(",     &Machine::wordREST);
-      builtin.add("RM",        &Machine::wordRM);
+      addWord("RAND?",     &Machine::wordRAND);
+      addWord("RAND!",     &Machine::wordSEED);
+      addWord("RELEASE",   &Machine::wordRELEASE);
+      addWord("REN",       &Machine::wordREN);
+      addWord("REP(",      &Machine::wordREP);
+      addWord("REPORT",    &Machine::wordREPORT);
+      addWord("REST(",     &Machine::wordREST);
+      addWord("RM",        &Machine::wordRM);
 
-      builtin.add("SAVE",      &Machine::wordSAVE);
-      builtin.add("SCAN",      &Machine::wordSCAN);
-      builtin.add("SCORE",     &Machine::wordSCORE);
-      builtin.add("SHARE",     &Machine::wordSHARE);
-      builtin.add("SHIFT",     &Machine::wordSHIFT);
-      builtin.add("SHOW",      &Machine::wordSHOW);
-      builtin.add("SIGN",      &Machine::wordSIGN);
-      builtin.add("SIMPLEA",   &Machine::wordSIMPLEA);
-      builtin.add("SIMPLEACT", &Machine::wordSIMPLEACT);
-      builtin.add("SIMPLEP",   &Machine::wordSIMPLEP);
-      builtin.add("SIMPLEW",   &Machine::wordSIMPLEW);
-      builtin.add("SOUND",     &Machine::wordSOUND);
-      builtin.add("SP",        &Machine::wordSP);
-      builtin.add("STOP",      &Machine::wordSTOP);
-      builtin.add("SYNC",      &Machine::wordSYNC);
-      builtin.add("SUSTAIN",   &Machine::wordSUSTAIN);
+      addWord("SAVE",      &Machine::wordSAVE);
+      addWord("SCAN",      &Machine::wordSCAN);
+      addWord("SCORE",     &Machine::wordSCORE);
+      addWord("SHARE",     &Machine::wordSHARE);
+      addWord("SHIFT",     &Machine::wordSHIFT);
+      addWord("SHOW",      &Machine::wordSHOW);
+      addWord("SIGN",      &Machine::wordSIGN);
+      addWord("SIMPLEA",   &Machine::wordSIMPLEA);
+      addWord("SIMPLEACT", &Machine::wordSIMPLEACT);
+      addWord("SIMPLEP",   &Machine::wordSIMPLEP);
+      addWord("SIMPLEW",   &Machine::wordSIMPLEW);
+      addWord("SOUND",     &Machine::wordSOUND);
+      addWord("SP",        &Machine::wordSP);
+      addWord("STOP",      &Machine::wordSTOP);
+      addWord("SYNC",      &Machine::wordSYNC);
+      addWord("SUSTAIN",   &Machine::wordSUSTAIN);
 
-      builtin.add("TEMPO",     &Machine::wordTEMPO);
-      builtin.add("TIE",       &Machine::wordTIE);
-      builtin.add("TIME",      &Machine::wordTIME);
-      builtin.add("TUNE",      &Machine::wordTUNE);
+      addWord("TEMPO",     &Machine::wordTEMPO);
+      addWord("TIE",       &Machine::wordTIE);
+      addWord("TIME",      &Machine::wordTIME);
+      addWord("TUNE",      &Machine::wordTUNE);
 
-      builtin.add("VAL",       &Machine::wordVAL);
-      builtin.add("VERSION",   &Machine::wordVERSION);
-      builtin.add("VOICE",     &Machine::wordVOICE);
-      builtin.add("VOICES",    &Machine::wordVOICES);
+      addWord("VAL",       &Machine::wordVAL);
+      addWord("VERSION",   &Machine::wordVERSION);
+      addWord("VOICE",     &Machine::wordVOICE);
+      addWord("VOICES",    &Machine::wordVOICES);
 
-      builtin.add("WAVE",      &Machine::wordWAVE);
-      builtin.add("WG!",       &Machine::wordWGWRITE);
-      builtin.add("WG?",       &Machine::wordWGREAD);
-      builtin.add("WGC",       &Machine::wordWGC);
-      builtin.add("WH!",       &Machine::wordWHWRITE);
-      builtin.add("WHG",       &Machine::wordWHG);
-      builtin.add("WRITE",     &Machine::wordWRITE);
-      builtin.add("WMOD",      &Machine::wordWMOD);
-      builtin.add("WZERO",     &Machine::wordWZERO);
+      addWord("WAVE",      &Machine::wordWAVE);
+      addWord("WG!",       &Machine::wordWGWRITE);
+      addWord("WG?",       &Machine::wordWGREAD);
+      addWord("WGC",       &Machine::wordWGC);
+      addWord("WH!",       &Machine::wordWHWRITE);
+      addWord("WHG",       &Machine::wordWHG);
+      addWord("WRITE",     &Machine::wordWRITE);
+      addWord("WMOD",      &Machine::wordWMOD);
+      addWord("WZERO",     &Machine::wordWZERO);
 
-      builtin.add("XOR",       &Machine::wordXOR);
+      addWord("XOR",       &Machine::wordXOR);
 
       reset();
+   }
+
+   //! User command line entry point
+   void shell(bool echo_)
+   {
+      printf("%zu\n", sizeof(*this));
+      printf("%zu\n", sizeof(builtin));
+
+      static const unsigned MAX_LINE_LENGTH = 255;
+
+      while(true)
+      {
+         printf(" %%");
+
+         char line[MAX_LINE_LENGTH + 1];
+
+         for(unsigned i = 0; true; ++i)
+         {
+            char ch = getchar();
+            if (ch == -1)
+               return;
+
+            if (echo_)
+               putchar(ch);
+
+            if (ch == '\n')
+            {
+               line[i] = '\0';
+               break;
+            }
+
+            line[i] = ch;
+         }
+
+         parseLine(line);
+      }
+   }
+
+   //! Sequencer tick entry point
+   void tick()
+   {
+   }
+
+private:
+   using WordFunc = void (Machine::*)();
+
+   void parseLine(const char* line_)
+   {
+      for(token_start = line_; *token_start != '\0'; token_start = token_end)
+      {
+         unsigned code;
+         token_end = user.lookup(token_start, code);
+         if (token_end != token_start)
+         {
+         }
+         else if (token_end == token_start)
+         {
+            WordFunc func;
+            token_end = builtin.lookup(token_start, func);
+            if (token_end == token_start)
+            {
+               printf("ERR: %s\n", token_start);
+               break;
+            }
+
+            (this->*func)();
+         }
+      }
    }
 
    void reset()
    {
       num_stack.clear();
       str_stack.clear();
+      score.reset();
+      sound.reset();
+
+      printf("AMPLE re-code\n");
    }
 
-   void run(const char* input_)
-   {
-      for(token_start = input_; *token_start != '\0'; token_start = token_end)
-      {
-         WordFunc func;
-         token_end = builtin.lookup(token_start, func);
-
-         if (token_end == token_start)
-         {
-            printf("ERR: %s\n", token_start);
-            break;
-         }
-
-         (this->*func)();
-      }
-   }
-
-private:
    void error(const char* msg_)
    {
       printf("%s\n", msg_);
    }
 
-   using WordFunc = void (Machine::*)();
+   void addWord(const char* pattern_, WordFunc func_)
+   {
+      if (not builtin.add(pattern_, func_))
+      {
+         error("Dictionary full");
+         printf("pattern = %s\n", pattern_);
+      }
+   }
 
-   // VALKUE WORDS
+   // VALUE WORDS
 
    void wordOFF()     { push(0); }
    void wordON()      { push(-1); }
@@ -300,9 +380,9 @@ private:
       Number number = 0;
       for(const char* s = token_start + 1; s < token_end; s++)
          if (*s >= 'A')
-            number = number * 16 + *s - '0';
-         else
             number = number * 16 + *s - 'A' + 0xA;
+         else
+            number = number * 16 + *s - '0';
       push(number);
    }
 
@@ -399,18 +479,13 @@ private:
    void wordSTARTGROUP() {}
    void wordENDGROUP()   {}
    void wordSYSTEM()     {}
-   void wordSHARPEN()    {}
-   void wordLENGTH()     {}
-   void wordFLATTEN()    {}
    void wordBUFFER()     {}
    void wordLENGTHEN()   {}
    void wordOCTDOWN()    {}
-   void wordNATURALISE() {}
    void wordUPOCTAVE()   {}
    void wordFINISH()     {}
    void wordSTARTWORD()  {}
    void wordENDWORD()    {}
-   void wordREST()       {}
    void wordENDREST()    {}
    void wordENDBAR()     {}
 
@@ -440,21 +515,30 @@ private:
    void wordNL()         { printf("\n"); }
    void wordSP()         {}
 
-   void wordNOTE()      {}
    void wordALIGN()     {}
    void wordAPPEND()    {}
    void wordASC()       {}
    void wordVAL()       {}
    void wordHVAL()      {}
 
-   // MUSIC WORDS
+   // SCORE WORDS
+   void wordSCORE()      { score.reset(); }
+   void wordKEY()        { score.keySig(true); }
+   void wordENDKEY()     { score.keySig(false); }
+   void wordOCTAVE()     { score.setOctave(pop()); }
+   void wordNOTE()       { score.note(*token_start); }
+   void wordFLATTEN()    { score.acid(-1); }
+   void wordNATURALISE() { score.acid(0);  }
+   void wordSHARPEN()    { score.acid(+1); }
+   void wordREST()       { score.rest(); }
+   void wordLENGTH()     { score.setLength(pop()); }
+   void wordTIE()        { score.tie(); }
+
    void wordBAR()       {}
-   void wordSCORE()     {}
    void wordDURATION()  {}
-   void wordTIE()       {}
    void wordENDTIE()    {}
-   void wordKEY()       {}
-   void wordENDKEY()    {}
+
+
    void wordFLUSH()     {}
    void wordTEMPO()     {}
    void wordFREEZE()    {}
@@ -485,27 +569,27 @@ private:
    void wordRELEASE()   {}
 
    // SOUND WORDS
-   void wordAMP()       { ensemble.getChan()->setAmp(pop()); }
-   void wordCHAN()      { ensemble.setChan(pop()); }
-   void wordCHANS()     { if (not ensemble.allocChans(pop())) error("Too many channels"); }
+   void wordAMP()       { sound.getChan()->setAmp(pop()); }
+   void wordCHAN()      { sound.setChan(pop()); }
+   void wordCHANS()     { if (not sound.allocChans(pop())) error("Too many channels"); }
    void wordCYCLE()     {}
 
-   void wordFM()        { ensemble.getChan()->setFM(pop()); }
-   void wordGATE()      { ensemble.getChan()->setGate(pop()); }
-   void wordINVERT()    { ensemble.getChan()->setInvert(pop()); }
-   void wordOFFSET()    { ensemble.getChan()->setOffset(pop()); }
-   void wordPITCH()     { ensemble.getChan()->setPitch(pop()); }
-   void wordPOS()       { ensemble.getChan()->setPos(pop()); }
-   void wordRM()        { ensemble.getChan()->setRM(pop()); }
-   void wordSHIFT()     { ensemble.getChan()->setShift(pop()); }
+   void wordFM()        { sound.getChan()->setFM(pop()); }
+   void wordGATE()      { sound.getChan()->setGate(pop()); }
+   void wordINVERT()    { sound.getChan()->setInvert(pop()); }
+   void wordOFFSET()    { sound.getChan()->setOffset(pop()); }
+   void wordPITCH()     { sound.getChan()->setPitch(pop()); }
+   void wordPOS()       { sound.getChan()->setPos(pop()); }
+   void wordRM()        { sound.getChan()->setRM(pop()); }
+   void wordSHIFT()     { sound.getChan()->setShift(pop()); }
 
    void wordPLAYERS()   {}
-   void wordSOUND()     { Voice* voice = ensemble.getVoice(); if (voice != nullptr) voice->reset(); }
-   void wordSYNC()      { ensemble.getChan()->setSync(pop()); }
-   void wordVOICE()     { ensemble.setVoice(pop()); }
-   void wordVOICES()    { if (not ensemble.allocVoices(pop())) error("Too many voices"); }
+   void wordSOUND()     { Voice* voice = sound.getVoice(); if (voice != nullptr) voice->reset(); }
+   void wordSYNC()      { sound.getChan()->setSync(pop()); }
+   void wordVOICE()     { sound.setVoice(pop()); }
+   void wordVOICES()    { if (not sound.allocVoices(pop())) error("Too many voices"); }
    void wordSHARE()     {}
-   void wordWAVE()      { ensemble.getChan()->setWave(pop()); }
+   void wordWAVE()      { sound.getChan()->setWave(pop()); }
    void wordTUNE()      {}
 
    // PROGRAM WORDS
@@ -544,7 +628,6 @@ private:
    void wordCOMPACT()   {}
    void wordVERSION()   {}
 
-public:
    void write(Address address_, Number value_)
    {
       if (address_ >= MEMORY_SIZE)
@@ -586,18 +669,18 @@ public:
    static const unsigned STR_STACK_SIZE = 512;
    static const Address  MEMORY_SIZE    = 9184;
 
-   Dict<WordFunc,512> builtin{};
-   Dict<unsigned,512> user{};
-   const char*        token_start{};
-   const char*        token_end{};
-
    using NumStack    = STB::Stack<Number,NUM_STACK_SIZE>;
    using StringStack = StrStack<STR_STACK_SIZE>;
 
-   NumStack    num_stack{};
-   StringStack str_stack{};
-   Number      memory[MEMORY_SIZE];
-   Ensemble    ensemble;
+   const char*        token_start{};
+   const char*        token_end{};
+   Dict<WordFunc,512> builtin{};
+   Dict<unsigned,512> user{};
+   NumStack           num_stack{};
+   StringStack        str_stack{};
+   Number             memory[MEMORY_SIZE];
+   Score              score{};
+   Sound              sound{};
 };
 
 } // namespace AMPLE

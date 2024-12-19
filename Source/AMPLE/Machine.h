@@ -279,9 +279,6 @@ public:
    //! User command line entry point
    void shell(bool echo_)
    {
-      printf("%zu\n", sizeof(*this));
-      printf("%zu\n", sizeof(builtin));
-
       static const unsigned MAX_LINE_LENGTH = 255;
 
       while(true)
@@ -674,8 +671,8 @@ private:
 
    const char*        token_start{};
    const char*        token_end{};
-   Dict<WordFunc,512> builtin{};
-   Dict<unsigned,512> user{};
+   Dict<WordFunc,490> builtin{};
+   Dict<unsigned,256> user{};
    NumStack           num_stack{};
    StringStack        str_stack{};
    Number             memory[MEMORY_SIZE];

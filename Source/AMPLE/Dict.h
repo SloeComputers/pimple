@@ -26,26 +26,71 @@
 #include <cstdio>
 
 #include "STB/Heap.h"
+#include "STB/List.h"
 #include "STB/BitArray.h"
 
 namespace AMPLE {
 
-template <typename TYPE, size_t NUM_STATES>
+template <typename TYPE,
+          size_t   NUM_STATES,
+          size_t   NUM_TRANS = NUM_STATES>
 class Dict
 {
-   template <typename VALUE, typename SYMBOL, SYMBOL LOWEST, SYMBOL HIGHEST>
-   class DFAState : public STB::List<DFAState<VALUE,SYMBOL,LOWEST,HIGHEST>>::Elem
+   template <typename VALUE>
+   class DFAState : public STB::List<DFAState<VALUE>>::Elem
    {
    public:
+      class Trans : public STB::List<Trans>::Elem
+      {
+      public:
+         Trans() = default;
+
+         Trans(char lower_, char upper_, DFAState* state_)
+            : lower(lower_)
+            , upper(upper_)
+            , state(state_)
+         {
+         }
+
+         DFAState* get() const { return state; }
+
+         bool uniqueMatch(char symbol_) const
+         {
+            return (symbol_ == lower) && (symbol_ == upper);
+         }
+
+         DFAState* lookup(char symbol_) const
+         {
+            return (symbol_ >= lower) && (symbol_ <= upper) ? state : nullptr;
+         }
+
+         template <typename HEAP>
+         void print(const HEAP& heap) const
+         {
+            printf("[%c", lower);
+
+            if (lower != upper)
+            {
+               printf("-%c]", upper);
+            }
+            else
+            {
+               printf("]  ");
+            }
+
+            state->printName(heap, " -> ", "\n");
+         }
+
+      private:
+         const char lower{};
+         const char upper{};
+         DFAState*  state{};
+      };
+
       DFAState() = default;
 
-      DFAState(size_t index_)
-         : index(index_)
-      {
-      }
-
       //! State has no exit transitions
-      bool is_final() const { return num_trans == 0; }
+      bool is_final() const { return trans_list.empty(); }
 
       //! State can terminate a sequence
       bool is_terminal() const { return terminal; }
@@ -57,10 +102,17 @@ class Dict
       const VALUE& get_value() const { return value; }
 
       //! Clear state to initial condition
-      void clear()
+      template <typename HEAP>
+      void clear(HEAP& heap_)
       {
          set_non_terminal();
-         link(LOWEST, HIGHEST, nullptr);
+
+         while(not trans_list.empty())
+         {
+            Trans* trans = trans_list.front();
+            trans_list.pop_front();
+            heap_.free(trans);
+         }
       }
 
       //! Set the state as a terminal state with a value
@@ -75,118 +127,117 @@ class Dict
          terminal = false;
       }
 
-      //! Add a tranition for a range of characters
-      void link(SYMBOL lo_, SYMBOL hi_, DFAState* next_)
+      //! Add a transition for a range of characters
+      template <typename HEAP>
+      void link(HEAP& heap_, char lo_, char hi_, DFAState* next_)
       {
-         for(SYMBOL symbol = lo_; symbol <= hi_; symbol++)
-         {
-            link(symbol, next_);
-         }
+         Trans* trans = heap_.alloc(lo_, hi_, next_);
+         trans_list.push_front(trans);
       }
 
-      //! Add a tranition for a single character
-      void link(SYMBOL symbol_, DFAState* next_)
+      //! Add a transition for a single character
+      template <typename HEAP>
+      void link(HEAP& heap_, char symbol_, DFAState* next_)
       {
-         if (valid(symbol_))
+         link(heap_, symbol_, symbol_, next_);
+      }
+
+      //! Remove a transition for a single character
+      template <typename HEAP>
+      void unlink(HEAP& heap_, char symbol_)
+      {
+         for(auto& trans : trans_list)
          {
-            size_t index = symbol_ - LOWEST;
-
-            if (trans[index] != nullptr)
-               --num_trans;
-
-            trans[index] = next_;
-
-            if (next_ != nullptr)
-               ++num_trans;
+            if (trans.uniqueMatch(symbol_))
+            {
+               trans_list.remove(&trans);
+               heap_.free(&trans);
+               break;
+            }
          }
       }
 
       //! Get next state for a symbol
-      DFAState* follow(SYMBOL symbol_)
+      DFAState* follow(char symbol_) const
       {
-         if (not valid(symbol_))
-            return nullptr;
+         for(const auto& trans : trans_list)
+         {
+            DFAState* state = trans.lookup(symbol_);
+            if (state)
+               return state;
+         }
 
-         return trans[symbol_ - LOWEST];
+         return nullptr;
       }
 
-      void print_prep() const
+      void clearVisited() const
       {
          if (not visited)
             return;
-
          visited = false;
 
-         for(size_t i = 0; i < NUM_CHARS; ++i)
-         {
-            if (trans[i] != nullptr)
-            {
-               trans[i]->print_prep();
-            }
-         }
+         for(const auto& trans : trans_list)
+            trans.get()->clearVisited();
       }
 
-      void print() const
+      template <typename HEAP>
+      void printName(HEAP& heap, const char* prefix_, const char* suffix_) const
       {
+         size_t index = heap.index(this);
+
+         printf("%s%c%zu%s", prefix_, terminal ? 'T' : 'S', index, suffix_);
+      }
+
+      template <typename HEAP>
+      void print(const HEAP& heap) const
+      {
+         if (visited)
+            return;
          visited = true;
 
-         printf("%c%zu\n", terminal ? 'T' : 'S', index);
+         printName(heap, "", ":\n");
 
-         for(size_t i = 0; i < NUM_CHARS; ++i)
-         {
-            if (trans[i] != nullptr)
-            {
-               printf("'%c' -> %c%zu\n",
-                      SYMBOL(LOWEST + i),
-                      trans[i]->terminal ? 'T' : 'S',
-                      trans[i]->index);
-            }
-         }
-         printf("\n");
+         for(const auto& trans : trans_list)
+            trans.print(heap);
 
-         for(size_t i = 0; i < NUM_CHARS; ++i)
-         {
-            if ((trans[i] != nullptr) && (not trans[i]->visited))
-            {
-               trans[i]->print();
-            }
-         }
+         for(const auto& trans : trans_list)
+            trans.get()->print(heap);
       }
 
    private:
-      static bool valid(uint8_t ch_) { return (ch_ >= LOWEST) && (ch_ <= HIGHEST); }
-
-      static const size_t NUM_CHARS = HIGHEST - LOWEST + 1;
-
-      bool         terminal{false};
-      bool         shared{false};
-      mutable bool visited{false};
-      size_t       index{0};
-      size_t       num_trans{0};
-      VALUE        value{};
-      DFAState*    trans[NUM_CHARS] = {};
+      bool             terminal{false};
+      bool             shared{false};
+      mutable bool     visited{false};
+      VALUE            value{};
+      STB::List<Trans> trans_list{};
    };
 
-   using State = DFAState<TYPE,char,' ','~'>;
+   using State = DFAState<TYPE>;
+   using Trans = typename State::Trans;
 
 public:
-   Dict() = default;
+   Dict()
+   {
+      clear();
+   }
 
    //! Get number allocated
-   size_t allocated() const { return heap.allocated(); }
+   size_t allocatedS() const { return state_heap.allocated(); }
+   size_t allocatedT() const { return trans_heap.allocated(); }
 
    //! Remove all entries from the dictionary
    void clear()
    {
-      index = 0;
-      root.clear();
-      heap.reset();
+      state_heap.reset();
+      trans_heap.reset();
+
+      root = state_heap.alloc();
    }
 
    //! Add a token to the dictionary
    bool add(const char* token_, const TYPE& value_)
    {
-      return add(&root, token_, value_);
+      return add(root, token_, value_);
    }
 
    //! Recursive add of a token to the dictionary
@@ -241,41 +292,50 @@ public:
          break;
       }
 
-      if (*s_ == '*')
-      {
-         next_ = state_;
-         s_++;
-      }
-
-      if (next_ == nullptr)
-      {
-         next_ = state_->follow(ch);
-         if (next_ == nullptr)
-         {
-            next_ = heap.alloc(++index);
-         }
-      }
-
       if (range.any())
       {
+         if (*s_ == '*')
+            next_ = state_;
+         else
+            next_ = state_heap.alloc();
+
          for(char ch = ' '; ch <= '~'; ++ch)
          {
             if (range[ch])
             {
-               state_->link(ch, next_);
+               char lower = ch;
+               while((++ch <= '~') && range[ch]);
+               char upper = --ch;
+
+               state_->link(trans_heap, lower, upper, next_);
+
                if (*s_ == '+')
-                  next_->link(ch, next_);
+                  next_->link(trans_heap, lower, upper, next_);
             }
          }
       }
       else
       {
-         state_->link(ch, next_);
-         if (*s_ == '+')
-            next_->link(ch, next_);
+         if (*s_ == '*')
+         {
+            next_ = state_;
+            next_->link(trans_heap, ch, next_);
+         }
+         else
+         {
+            next_ = state_->follow(ch);
+            if (next_ == nullptr)
+            {
+               next_ = state_heap.alloc();
+               state_->link(trans_heap, ch, next_);
+            }
+
+            if (*s_ == '+')
+               next_->link(trans_heap, ch, next_);
+         }
       }
 
-      if (*s_ == '+')
+      if ((*s_ == '+') || (*s_ == '*'))
          s_++;
 
       return add(next_, s_, value_);
@@ -284,7 +344,7 @@ public:
    //! Remove a tolen from the dictionary
    const char* lookup(const char* input_, TYPE& value_)
    {
-      State*      state   = &root;
+      State*      state   = root;
       State*      match   = nullptr;
       const char* match_s = input_;
 
@@ -314,14 +374,14 @@ public:
    //! Remove a token from the dictionary
    bool remove(const char* token_)
    {
-      return remove(&root, token_);
+      return remove(root, token_);
    }
 
    //! Debug print dictionary structure
    void print() const
    {
-      root.print_prep();
-      root.print();
+      root->clearVisited();
+      root->print(state_heap);
    }
 
 private:
@@ -359,17 +419,17 @@ private:
          if (next->is_final())
          {
             assert(not state_->is_shared());
-            state_->link(ch, nullptr);
-            heap.free(state_);
+            state_->unlink(trans_heap, ch);
+            state_heap.free(state_);
          }
       }
 
       return ok;
    }
 
-   size_t                      index{0};
-   State                       root{0};
-   STB::Heap<State,NUM_STATES> heap{};
+   State*                      root{};
+   STB::Heap<State,NUM_STATES> state_heap{};
+   STB::Heap<Trans,NUM_TRANS>  trans_heap{};
 };
 
 } // namespace AMPLE

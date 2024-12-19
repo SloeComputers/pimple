@@ -7,11 +7,11 @@ TEST(Dict, basic)
 {
    AMPLE::Dict<unsigned,128> dict{};
 
-   EXPECT_EQ(0, dict.allocated());
+   EXPECT_EQ(1, dict.allocatedS());
 
    EXPECT_TRUE(dict.add("fred", 10));
 
-   EXPECT_EQ(4, dict.allocated());
+   EXPECT_EQ(5, dict.allocatedS());
 
    unsigned value{0};
    const char* s;
@@ -27,7 +27,7 @@ TEST(Dict, basic)
    s = dict.lookup("fredjames", value);
    EXPECT_STREQ("fredjames", s);
 
-   EXPECT_EQ(0, dict.allocated());
+   EXPECT_EQ(1, dict.allocatedS());
 }
 
 TEST(Dict, common_prefix)
@@ -67,7 +67,7 @@ TEST(Dict, common_prefix)
    s = dict.lookup("freddiejames", value);
    EXPECT_STREQ("freddiejames", s);
 
-   EXPECT_EQ(0, dict.allocated());
+   EXPECT_EQ(1, dict.allocatedS());
 }
 
 TEST(Dict, one_or_more)
@@ -130,6 +130,8 @@ TEST(Dict, string)
    AMPLE::Dict<unsigned,128> dict{};
 
    EXPECT_TRUE(dict.add("\"[ !#-~]*\"", 10));
+
+   dict.print();
 
    unsigned value{0};
    const char* s;

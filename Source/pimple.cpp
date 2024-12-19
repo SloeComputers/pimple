@@ -25,11 +25,10 @@
 #include <cstdio>
 
 #include "hw/hw.h"
-#include "AMPLE/Shell.h"
+#include "AMPLE/Machine.h"
 
 #include "Synth.h"
 #include "Voice.h"
-
 
 static const unsigned DAC_FREQ         = 48000;                 //!< DAC sample rate (Hz)
 static const unsigned TICK_RATE        = 400;                   //!< Voice control rate 400 Hz
@@ -42,6 +41,7 @@ static Synth<NUM_VOICES,Voice<DAC_FREQ>> synth {};
 static hw::MidiIn                        midi_in {synth, MIDI_DEBUG};
 static hw::Led                           led {};
 static hw::Audio<SAMPLES_PER_TICK>       audio {DAC_FREQ};
+static AMPLE::Machine                    ample{};
 
 
 #if defined(HW_MIDI_USB_DEVICE)
@@ -113,6 +113,8 @@ static void hwTick()
    synth.tick();
 
    led = synth.isAnyVoiceOn();
+
+   ample.tick();
 }
 
 
@@ -141,12 +143,10 @@ int main()
 
    audio.start();
 
-   AMPLE::Shell shell{};
-
 #if defined(HW_NATIVE)
-   shell.run(/* echo */ false);
+   ample.shell(/* echo */ false);
 #else
-   shell.run(/* echo */ true);
+   ample.shell(/* echo */ true);
 #endif
 
    return 0;

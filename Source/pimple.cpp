@@ -28,7 +28,6 @@
 #include "AMPLE/Machine.h"
 
 #include "Synth.h"
-#include "Voice.h"
 
 static const unsigned DAC_FREQ         = 48000;                 //!< DAC sample rate (Hz)
 static const unsigned TICK_RATE        = 400;                   //!< Voice control rate 400 Hz
@@ -37,11 +36,11 @@ static const unsigned NUM_VOICES       = 16;
 static const bool     MIDI_DEBUG       = false;
 
 
-static Synth<NUM_VOICES,Voice<DAC_FREQ>> synth {};
-static hw::MidiIn                        midi_in {synth, MIDI_DEBUG};
-static hw::Led                           led {};
-static hw::Audio<SAMPLES_PER_TICK>       audio {DAC_FREQ};
-static AMPLE::Machine                    ample{};
+static AMPLE::Machine                ample{};
+static Synth<NUM_VOICES,AMPLE::Chan> synth{ample.getChannels()};
+static hw::MidiIn                    midi_in{synth, MIDI_DEBUG};
+static hw::Led                       led{};
+static hw::Audio<SAMPLES_PER_TICK>   audio{DAC_FREQ};
 
 
 #if defined(HW_MIDI_USB_DEVICE)
@@ -125,7 +124,8 @@ int main()
    printf("\e[1,1H");
 
    printf("\n");
-   printf("Program  : PIMPLE (%s)\n", HW_DESCR);
+   printf("Program  : PiMPLE\n");
+   printf("Hardware : %s\n", HW_DESCR);
    printf("Author   : Copyright (c) 2024 John D. Haughton\n");
    printf("License  : MIT\n");
    printf("Version  : %s\n", PLT_VERSION);
@@ -138,7 +138,7 @@ int main()
    hw::Lcd lcd{};
 
    lcd.move(0, 0);
-   lcd.print("PIMPLE");
+   lcd.print("PiMPLE");
 #endif
 
    audio.start();

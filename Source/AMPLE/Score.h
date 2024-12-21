@@ -25,6 +25,7 @@
 #include "STB/Fifo.h"
 
 #include "Types.h"
+#include "Player.h"
 
 namespace AMPLE {
 
@@ -34,6 +35,11 @@ public:
    Score()
    {
       reset();
+   }
+
+   void setPlayer(Player* player_)
+   {
+      player = player_;
    }
 
    void reset()
@@ -49,13 +55,13 @@ public:
          signature[i] = 0;
    }
 
-   void setOctave(Number value_)
+   void noteOctave(Number value_)
    {
       octave      = value_;
       last_letter = '\0';
    }
 
-   void setLength(Number value_)
+   void noteLength(Number value_)
    {
       length = value_;
    }
@@ -117,7 +123,7 @@ public:
 
    void rest()
    {
-      schedule(midi_note, length);
+      schedule(0, length);
    }
 
    void tie()
@@ -175,9 +181,10 @@ private:
 
    void schedule(uint8_t note_, unsigned length_)
    {
-      printf("Note=%u length=%u\n", note_, length_);
+      player->schedule(note_, length_);
    }
 
+   Player*  player{nullptr};
    bool     key_sig;
    signed   signature[7];
    bool     accidental;

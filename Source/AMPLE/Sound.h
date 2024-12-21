@@ -23,42 +23,123 @@
 #pragma once
 
 #include "Player.h"
+#include "Score.h"
 
 #include "STB/List.h"
+#include "STB/Fifo.h"
 
 namespace AMPLE {
 
 struct Sound
 {
 public:
-   Sound()
+   Sound(Score& score_)
+      : score(&score_)
    {
-      allocPlayers(0);
-   }
-
-   ~Sound()
-   {
-      allocPlayers(0);
+      reset();
    }
 
    void reset()
    {
+      static_player.reset();
+
+      // No dynamic players
+      playerFree();
    }
 
-   Chan* getChan()
+   //! Allocate dynamic players
+   bool playerAlloc(Number n_)
    {
-      return current_player->getChan();
+      if ((n_ < 0) || (player_heap.avail() < n_))
+         return false;
+
+      playerFree();
+
+      for(size_t i = 0; i < n_; ++i)
+         players.push_back(player_heap.alloc());
+
+      return true;
    }
 
-   Voice* getVoice()
+   //! Select current player
+   bool playerSelect(Number n_)
    {
-      return current_player->getVoice();
+      if ((n_ < 0) || (n_ > players.size()))
+         return false;
+
+      current_player = n_ == 0 ? &static_player
+                               : players[n_ - 1];
+
+      score->setPlayer(current_player);
+
+      voiceSelect(1);
+
+      return true;
    }
 
-   bool allocPlayers(size_t n_)
+   //! Allocate voices in the current player
+   bool voiceAlloc(Number n_)
    {
-      current_player = &static_player;
+      return current_player->voiceAlloc(n_);
+   }
 
+   //! Select voice in the current player
+   bool voiceSelect(Number n_)
+   {
+      return current_player->voiceSelect(n_);
+   }
+
+   //! Allocate channels in the current voice
+   bool chanAlloc(Number n_)
+   {
+      return current_player->chanAlloc(n_);
+   }
+
+   //! Reset all the channels in the current voice
+   void chanReset()
+   {
+      current_player->chanReset();
+   }
+
+   //! Select channels in the current voice
+   bool chanSelect(Number n_)
+   {
+      return current_player->chanSelect(n_);
+   }
+
+   //! Control channels in the current voice
+   bool chanControl(Chan::Param param_, Number value_)
+   {
+      return current_player->chanControl(param_, value_);
+   }
+
+
+   void tick()
+   {
+      static_player.tick();
+
+      for(auto& player : players)
+         player.tick();
+   }
+
+   void debug()
+   {
+      printf("Sound::static_player %s\n", &static_player == current_player ? "<<<" : "");
+      static_player.debug();
+
+      unsigned i = 1;
+      for(auto& player : players)
+      {
+         printf("Sound::players[%u] %s\n", i++, &player == current_player ? "<<<" : "");
+         player.debug();
+      }
+   }
+
+   static const size_t MAX_PLAYERS = 8;
+
+private:
+   void playerFree()
+   {
       while(not players.empty())
       {
          Player* player = players.front();
@@ -66,57 +147,10 @@ public:
          player_heap.free(player);
       }
 
-      if (n_ == 0)
-         return true;
-
-      if (player_heap.avail() < n_)
-         return false;
-
-      for(size_t i = 0; i < n_; ++i)
-      {
-         players.push_back(player_heap.alloc());
-      }
-
-      return true;
+      playerSelect(0);
    }
 
-   bool allocVoices(size_t n_)
-   {
-      return current_player->allocVoices(n_);
-   }
-
-   bool allocChans(size_t n_)
-   {
-      return current_player->allocChans(n_);
-   }
-
-   bool setPlayer(size_t n_)
-   {
-      size_t index = n_ - 1;
-
-      if (index >= players.size())
-         return false;
-
-      current_player = players[index];
-
-      setPlayer(0);
-
-      return true;
-   }
-
-   bool setVoice(size_t n_)
-   {
-      return current_player->setVoice(n_);
-   }
-
-   bool setChan(size_t n_)
-   {
-      return current_player->setChan(n_);
-   }
-
-   static const size_t MAX_PLAYERS = 8;
-
-private:
+   Score*            score{};
    Player*           current_player{};
    Player            static_player{};
    STB::List<Player> players{};

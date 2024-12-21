@@ -20,12 +20,37 @@
 #  SOFTWARE.
 #-------------------------------------------------------------------------------
 
+set(python_path ${CMAKE_CURRENT_SOURCE_DIR}/../../Platform/python)
+
+add_custom_command(
+   COMMENT
+      "Auto-generate function tables"
+   COMMAND
+      ${CMAKE_COMMAND}
+         -E env PYTHONPATH=${python_path}
+         ${CMAKE_CURRENT_SOURCE_DIR}/TABLE_GEN.py
+   DEPENDS
+      ${CMAKE_CURRENT_SOURCE_DIR}/TABLE_GEN.py
+      ${python_path}/Table.py
+   OUTPUT
+      ${CMAKE_CURRENT_BINARY_DIR}/Table_phase_delta.h
+      ${CMAKE_CURRENT_BINARY_DIR}/Table_phase_delta.cpp
+      ${CMAKE_CURRENT_BINARY_DIR}/Table_exp.h
+      ${CMAKE_CURRENT_BINARY_DIR}/Table_exp.cpp
+      ${CMAKE_CURRENT_BINARY_DIR}/Table_log_sine.h
+      ${CMAKE_CURRENT_BINARY_DIR}/Table_log_sine.cpp
+   )
 
 add_library(AMPLE STATIC
-            Sound.cpp)
+            Sound.cpp
+            Table_phase_delta.cpp
+            Table_log_sine.cpp
+            Table_exp.cpp
+            )
 
 target_include_directories(AMPLE
    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+   PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
    )
 
 target_link_libraries(AMPLE

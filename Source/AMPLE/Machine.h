@@ -40,6 +40,105 @@ class Machine
 public:
    Machine()
    {
+      buildBuiltinDict();
+   }
+
+   Chan* getChannels() const { return Voice::getChannels(); }
+
+   //! User command line entry point
+   void shell(bool echo_)
+   {
+      static const unsigned MAX_LINE_LENGTH = 255;
+
+      reset();
+
+      printf("AMPLE re-code\n");
+
+      while(true)
+      {
+         printf(" %%");
+
+         char line[MAX_LINE_LENGTH + 1];
+
+         for(unsigned i = 0; true; ++i)
+         {
+            char ch = getchar();
+            if (ch == -1)
+               return;
+
+            if (echo_)
+               putchar(ch);
+
+            if (ch == '\n')
+            {
+               line[i] = '\0';
+               break;
+            }
+
+            line[i] = ch;
+         }
+
+         parseLine(line);
+      }
+   }
+
+   //! Sequencer tick entry point
+   void tick()
+   {
+      sound.tick();
+   }
+
+private:
+   using WordFunc = void (Machine::*)();
+
+   void parseLine(const char* line_)
+   {
+      for(token_start = line_; *token_start != '\0'; token_start = token_end)
+      {
+         unsigned code;
+         token_end = user.lookup(token_start, code);
+         if (token_end != token_start)
+         {
+         }
+         else if (token_end == token_start)
+         {
+            WordFunc func;
+            token_end = builtin.lookup(token_start, func);
+            if (token_end == token_start)
+            {
+               printf("ERR: %s\n", token_start);
+               break;
+            }
+
+            (this->*func)();
+         }
+      }
+   }
+
+   void reset()
+   {
+      num_stack.clear();
+      str_stack.clear();
+      score.reset();
+      sound.reset();
+   }
+
+   void error(const char* msg_)
+   {
+      printf("%s\n", msg_);
+   }
+
+   void addWord(const char* pattern_, WordFunc func_)
+   {
+      if (not builtin.add(pattern_, func_))
+      {
+         error("Dictionary full");
+         printf("pattern = %s\n", pattern_);
+      }
+   }
+
+   void buildBuiltinDict()
+   {
       addWord("\n",        &Machine::wordNOTHING);
       addWord(" +",        &Machine::wordNOTHING);
 
@@ -273,104 +372,13 @@ public:
 
       addWord("XOR",       &Machine::wordXOR);
 
-      reset();
-   }
-
-   //! User command line entry point
-   void shell(bool echo_)
-   {
-      static const unsigned MAX_LINE_LENGTH = 255;
-
-      while(true)
-      {
-         printf(" %%");
-
-         char line[MAX_LINE_LENGTH + 1];
-
-         for(unsigned i = 0; true; ++i)
-         {
-            char ch = getchar();
-            if (ch == -1)
-               return;
-
-            if (echo_)
-               putchar(ch);
-
-            if (ch == '\n')
-            {
-               line[i] = '\0';
-               break;
-            }
-
-            line[i] = ch;
-         }
-
-         parseLine(line);
-      }
-   }
-
-   //! Sequencer tick entry point
-   void tick()
-   {
-   }
-
-private:
-   using WordFunc = void (Machine::*)();
-
-   void parseLine(const char* line_)
-   {
-      for(token_start = line_; *token_start != '\0'; token_start = token_end)
-      {
-         unsigned code;
-         token_end = user.lookup(token_start, code);
-         if (token_end != token_start)
-         {
-         }
-         else if (token_end == token_start)
-         {
-            WordFunc func;
-            token_end = builtin.lookup(token_start, func);
-            if (token_end == token_start)
-            {
-               printf("ERR: %s\n", token_start);
-               break;
-            }
-
-            (this->*func)();
-         }
-      }
-   }
-
-   void reset()
-   {
-      num_stack.clear();
-      str_stack.clear();
-      score.reset();
-      sound.reset();
-
-      printf("AMPLE re-code\n");
-   }
-
-   void error(const char* msg_)
-   {
-      printf("%s\n", msg_);
-   }
-
-   void addWord(const char* pattern_, WordFunc func_)
-   {
-      if (not builtin.add(pattern_, func_))
-      {
-         error("Dictionary full");
-         printf("pattern = %s\n", pattern_);
-      }
+      addWord("DEBUG",     &Machine::wordDEBUG);
    }
 
    // VALUE WORDS
 
-   void wordOFF()     { push(0); }
-   void wordON()      { push(-1); }
-   void wordEVEN()    { push(-2); }
-   void wordODD()     { push(-3); }
+   void wordOFF()     { push(OFF); }
+   void wordON()      { push(ON); }
 
    void wordHEXNUMBER()
    {
@@ -477,7 +485,6 @@ private:
    void wordENDGROUP()   {}
    void wordSYSTEM()     {}
    void wordBUFFER()     {}
-   void wordLENGTHEN()   {}
    void wordOCTDOWN()    {}
    void wordUPOCTAVE()   {}
    void wordFINISH()     {}
@@ -486,10 +493,7 @@ private:
    void wordENDREST()    {}
    void wordENDBAR()     {}
 
-   void wordSIMPLEA()    {}
    void wordSIMPLEACT()  {}
-   void wordSIMPLEP()    {}
-   void wordSIMPLEW()    {}
 
    void wordWGWRITE()    {}
    void wordWGREAD()     {}
@@ -499,8 +503,6 @@ private:
    void wordWMOD()       {}
    void wordWRITE()      {}
    void wordWZERO()      {}
-   void wordPLAY()       {}
-   void wordENDPLAY()    {}
 
    void wordQKEY()       {}
    void wordSIN()        {}
@@ -522,14 +524,15 @@ private:
    void wordSCORE()      { score.reset(); }
    void wordKEY()        { score.keySig(true); }
    void wordENDKEY()     { score.keySig(false); }
-   void wordOCTAVE()     { score.setOctave(pop()); }
+   void wordOCTAVE()     { score.noteOctave(pop()); }
+   void wordLENGTH()     { score.noteLength(pop()); }
    void wordNOTE()       { score.note(*token_start); }
    void wordFLATTEN()    { score.acid(-1); }
    void wordNATURALISE() { score.acid(0);  }
    void wordSHARPEN()    { score.acid(+1); }
    void wordREST()       { score.rest(); }
-   void wordLENGTH()     { score.setLength(pop()); }
-   void wordTIE()        { score.tie(); }
+   void wordLENGTHEN()   { score.tie(); }
+   void wordTIE()        { }
 
    void wordBAR()       {}
    void wordDURATION()  {}
@@ -551,43 +554,54 @@ private:
 
    // ENVELOPE WORDS
    void wordADSR()      {}
-   void wordAENV()      {}
-   void wordAGATE()     {}
    void wordEBIG()      {}
    void wordEGRAD()     {}
    void wordELEV()      {}
    void wordEMOD()      {}
    void wordESECT()     {}
-   void wordPENV()      {}
-   void wordPGATE()     {}
    void wordATTACK()    {}
    void wordDECAY()     {}
    void wordSUSTAIN()   {}
    void wordRELEASE()   {}
-
-   // SOUND WORDS
-   void wordAMP()       { sound.getChan()->setAmp(pop()); }
-   void wordCHAN()      { sound.setChan(pop()); }
-   void wordCHANS()     { if (not sound.allocChans(pop())) error("Too many channels"); }
    void wordCYCLE()     {}
 
-   void wordFM()        { sound.getChan()->setFM(pop()); }
-   void wordGATE()      { sound.getChan()->setGate(pop()); }
-   void wordINVERT()    { sound.getChan()->setInvert(pop()); }
-   void wordOFFSET()    { sound.getChan()->setOffset(pop()); }
-   void wordPITCH()     { sound.getChan()->setPitch(pop()); }
-   void wordPOS()       { sound.getChan()->setPos(pop()); }
-   void wordRM()        { sound.getChan()->setRM(pop()); }
-   void wordSHIFT()     { sound.getChan()->setShift(pop()); }
-
-   void wordPLAYERS()   {}
-   void wordSOUND()     { Voice* voice = sound.getVoice(); if (voice != nullptr) voice->reset(); }
-   void wordSYNC()      { sound.getChan()->setSync(pop()); }
-   void wordVOICE()     { sound.setVoice(pop()); }
-   void wordVOICES()    { if (not sound.allocVoices(pop())) error("Too many voices"); }
+   // SOUND WORDS
+   void wordPLAYERS()   { if (not sound.playerAlloc(pop())) error("Bad number of players"); }
+   void wordVOICE()     { if (not sound.voiceSelect(pop())) error("No such voice"); }
+   void wordVOICES()    { if (not sound.voiceAlloc(pop()))  error("Bad number of voices"); }
+   void wordCHANS()     { if (not sound.chanAlloc(pop()))   error("Bad number of channels"); }
+   void wordCHAN()      { if (not sound.chanSelect(pop()))  error("No such channel"); }
    void wordSHARE()     {}
-   void wordWAVE()      { sound.getChan()->setWave(pop()); }
+
+   void wordSOUND()     { sound.chanReset(); }
+   void wordAMP()       { sound.chanControl(Chan::AMP, pop()); }
+   void wordPITCH()     { sound.chanControl(Chan::PITCH, pop()); }
+   void wordOFFSET()    { sound.chanControl(Chan::OFFSET, pop()); }
+   void wordSHIFT()     { sound.chanControl(Chan::SHIFT, pop()); }
+   void wordWAVE()      { sound.chanControl(Chan::WAVE, pop()); }
+   void wordPOS()       { sound.chanControl(Chan::POS, pop()); }
+   void wordFM()        { sound.chanControl(Chan::FM, pop()); }
+   void wordRM()        { sound.chanControl(Chan::RM, pop()); }
+   void wordSYNC()      { sound.chanControl(Chan::SYNC, pop()); }
+   void wordINVERT()    { sound.chanControl(Chan::INVERT, pop()); }
+   void wordGATE()      { sound.chanControl(Chan::GATE, pop()); }
+   void wordAGATE()     { sound.chanControl(Chan::AGATE, pop()); }
+   void wordPGATE()     { sound.chanControl(Chan::PGATE, pop()); }
+   void wordAENV()      { if (not sound.chanControl(Chan::AENV, pop())) error("No such envelope"); }
+   void wordPENV()      { if (not sound.chanControl(Chan::PENV, pop())) error("No such envelope"); }
+
    void wordTUNE()      {}
+
+   void wordEVEN()      { push(EVEN); }
+   void wordODD()       { push(ODD); }
+   void wordPAIR()      { push(pop() + 64); }
+
+   void wordSIMPLEA()   { push(SIMPLEA); }
+   void wordSIMPLEP()   { push(SIMPLEP); }
+   void wordSIMPLEW()   { push(SIMPLEW); }
+
+   void wordPLAY()      {}
+   void wordENDPLAY()   {}
 
    // PROGRAM WORDS
    void wordCLEAR()     {}
@@ -616,7 +630,6 @@ private:
    void wordSCAN()      {}
    void wordSHOW()      {}
    void wordINDEX()     {}
-   void wordPAIR()      {}
    void wordPVAR()      {}
 
    // SYSTEM WORDS
@@ -624,6 +637,7 @@ private:
    void wordCODE()      {}
    void wordCOMPACT()   {}
    void wordVERSION()   {}
+   void wordDEBUG()     { sound.debug(); }
 
    void write(Address address_, Number value_)
    {
@@ -677,7 +691,7 @@ private:
    StringStack        str_stack{};
    Number             memory[MEMORY_SIZE];
    Score              score{};
-   Sound              sound{};
+   Sound              sound{score};
 };
 
 } // namespace AMPLE

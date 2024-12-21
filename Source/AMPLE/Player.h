@@ -34,96 +34,115 @@ struct Player : public STB::List<Player>::Elem
 public:
    Player()
    {
-      allocVoices(1);
+      reset();
    }
 
    ~Player()
    {
-      allocVoices(0);
+      voiceFree();
    }
 
-   Voice* getVoice()
+   void reset()
    {
-      return current_voice;
+      if (voiceAlloc(1))
+         voiceSelect(1);
    }
 
-   Chan* getChan()
+   //! Allocate voices to this player (AMPLE VOICES)
+   bool voiceAlloc(Number n_)
    {
-      if (current_voice == nullptr)
-         return nullptr;
+      if ((n_ < 0) || (voice_heap.avail() < n_))
+         return false;
 
-      return current_voice->getChan();
-   }
-
-   bool allocVoices(size_t n_)
-   {
-      current_voice = nullptr;
-
-      while(not voices.empty())
-      {  
-         Voice* voice = voices.front();
-         voices.pop_front();
-         voice_heap.free(voice);
-      }  
+      voiceFree();
       
+      for(size_t i = 0; i < n_; ++i)
+         voices.push_back(voice_heap.alloc());
+
+      return true;
+   }
+
+   //! Select voice (AMPLE VOICE)
+   bool voiceSelect(Number n_)
+   {
+      if ((n_ < 0) || (n_ > voices.size()))
+         return false;
+
+      current_voice = n_ == 0 ? &dummy_voice
+                              : voices[n_ - 1];
+      chanSelect(1);
+
+      return true;
+   }
+
+
+   //! Allocate channels in the current voice (AMPLE CHANS)
+   bool chanAlloc(Number n_)
+   {
+      return current_voice->chanAlloc(n_);
+   }
+
+   //! Reset all the channels in the current voice (AMPLE SOUND)
+   void chanReset()
+   {
+      current_voice->chanReset();
+   }
+
+   //! Select channels in the current voice (AMPLE CHAN)
+   bool chanSelect(Number n_)
+   {
+      return current_voice->chanSelect(n_);
+   }
+
+   //! Control channels in the current voice
+   bool chanControl(Chan::Param param_, Number value_)
+   {
+      return current_voice->chanControl(param_, value_);
+   }
+
+
+   void tick()
+   {
+      for(auto& voice : voices)
+         voice.tick();
+   }
+
+   void schedule(uint8_t note_, uint8_t length_)
+   {
+      current_voice->schedule(note_, length_);
+   }
+
+   void debug()
+   {
+      unsigned i = 1;
       for(auto& voice : voices)
       {
-         voice_heap.free(&voice);
+         printf("  Player::voices[%u] %s\n", i++, current_voice == &voice ? "<<<" : "");
+         voice.debug();
       }
-
-      if (n_ == 0)
-         return true;
-
-      if (voice_heap.avail() < n_)
-         return false;
-
-      for(size_t i = 0; i < n_; ++i)
-      {
-         voices.push_back(voice_heap.alloc());
-      }
-
-      setVoice(1);
-
-      return true;
-   }
-
-   bool allocChans(size_t n_)
-   {
-      if (current_voice == nullptr)
-         return false;
-
-      return current_voice->allocChans(n_);
-   }
-
-   bool setVoice(size_t n_)
-   {
-      size_t index = n_ - 1;
-
-      if (index >= voices.size())
-         return false;
-
-      current_voice = voices[index];
-
-      setChan(1);
-
-      return true;
-   }
-
-   bool setChan(size_t n_)
-   {
-      if (current_voice == nullptr)
-         return false;
-
-      return current_voice->setChan(n_);
    }
 
    static const size_t MAX_VOICES = 8;
 
 private:
-   Voice*           current_voice{};
+   //! De-allocate dynamic voices
+   void voiceFree()
+   {
+      while(not voices.empty())
+      {  
+         Voice* voice = voices.front();
+         voices.pop_front();
+         voice_heap.free(voice);
+      }
+
+      voiceSelect(0);
+   }
+
+   Voice            dummy_voice{/* dummy */ true};
    STB::List<Voice> voices;
+   Voice*           current_voice{&dummy_voice};
 
    static STB::Heap<Voice,MAX_VOICES> voice_heap;
 };
 
-} // namespace AMPLE
+} // AMPLE

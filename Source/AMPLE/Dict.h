@@ -37,14 +37,12 @@ template <typename TYPE,
 class Dict
 {
    template <typename VALUE>
-   class DFAState : public STB::List<DFAState<VALUE>>::Elem
+   class DFAState
    {
    public:
       class Trans : public STB::List<Trans>::Elem
       {
       public:
-         Trans() = default;
-
          Trans(char lower_, char upper_, DFAState* state_)
             : lower(lower_)
             , upper(upper_)

@@ -28,8 +28,9 @@ template <unsigned N, typename VOICE, unsigned AMP_N = N>
 class Synth : public MIDI::Instrument
 {
 public:
-   Synth()
+   Synth(VOICE* voice_)
       : MIDI::Instrument(N)
+      , voice(voice_)
    {
    }
 
@@ -43,7 +44,7 @@ public:
 
       for(unsigned i = first_voice_; i < last_voice_; ++i)
       {
-         if (voice[i].isActive())
+         if (voice[i].getGate())
             mix += voice[i].sample();
       }
 
@@ -56,7 +57,7 @@ public:
    {
       for(unsigned i = first_voice_; i < last_voice_; ++i)
       {
-         if (voice[i].isActive())
+         if (voice[i].getGate())
             voice[i].tick();
       }
    }
@@ -66,7 +67,7 @@ private:
    {
       for(unsigned i = 0; i < N; ++i)
       {
-         if (not voice[i].isActive()) return i;
+         if (not voice[i].getGate()) return i;
       }
       return 0;
    }
@@ -99,6 +100,6 @@ private:
       voice[index_].pitchBend(value_);
    }
 
-   VOICE    voice[N];
+   VOICE*   voice;
    unsigned active{0};
 };

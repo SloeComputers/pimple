@@ -491,15 +491,7 @@ private:
 
    void wordSIMPLEACT()  {}
 
-   void wordWGWRITE()    {}
-   void wordWGREAD()     {}
-   void wordWGC()        {}
-   void wordWHWRITE()    {}
-   void wordWHG()        {}
-   void wordWMOD()       {}
    void wordWRITE()      {}
-   void wordWZERO()      {}
-
    void wordQKEY()       {}
    void wordSIN()        {}
    void wordNIN()        {}
@@ -564,6 +556,16 @@ private:
    void wordSUSTAIN()   {}
    void wordRELEASE()   {}
    void wordCYCLE()     {}
+
+   // WAVE WORDS
+   void wordWZERO()      { sound.wave.clear(); }
+   void wordWHWRITE()    { sound.wave.harmWrite(pop(), pop()); }
+   void wordWGWRITE()    { sound.wave.geomWrite(pop(), pop()); }
+   void wordWGREAD()     { push(sound.wave.geomRead(pop())); }
+   void wordWGC()        { sound.wave.geomCopy(); }
+   void wordWHG()        { sound.wave.harmConvertToGeom(); }
+   void wordWMOD()       { sound.wave.waveMod(pop()); }
+
 
    // SOUND WORDS
    void wordPLAYERS()   { if (not sound.playerAlloc(pop())) error("Bad number of players"); }

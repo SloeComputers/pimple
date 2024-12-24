@@ -24,6 +24,7 @@
 
 #include "Player.h"
 #include "Score.h"
+#include "Wave.h"
 
 #include "STB/List.h"
 #include "STB/Fifo.h"
@@ -136,6 +137,8 @@ public:
    }
 
    static const size_t MAX_PLAYERS = 8;
+
+   Wave wave{};
 
 private:
    void playerFree()

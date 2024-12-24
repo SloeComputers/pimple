@@ -55,6 +55,25 @@ public:
          signature[i] = 0;
    }
 
+   void groupStart()
+   {
+      group_voice = 1;
+      save_last_letter = last_letter;
+      save_octave      = octave;
+   }
+
+   void groupEnd()
+   {
+      group_voice = 0;
+      last_letter = save_last_letter;
+      octave      = save_octave;
+   }
+
+   void noteChangeOctave(Number value_)
+   {
+      octave += value_;
+   }
+
    void noteOctave(Number value_)
    {
       octave      = value_;
@@ -181,7 +200,10 @@ private:
 
    void schedule(uint8_t note_, unsigned length_)
    {
-      player->schedule(note_, length_);
+      player->schedule(group_voice, note_, length_);
+
+      if (group_voice != 0)
+         ++group_voice;
    }
 
    Player*  player{nullptr};
@@ -190,9 +212,12 @@ private:
    bool     accidental;
    char     last_letter;
    signed   octave;
+   char     save_last_letter{};
+   signed   save_octave{};
    unsigned length;
    signed   adjust;
    uint8_t  midi_note;
+   unsigned group_voice{0};
 };
 
 } // namespace AMPLE

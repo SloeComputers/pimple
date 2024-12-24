@@ -212,7 +212,7 @@ private:
       addWord(";",         &Machine::wordVOICE);
       addWord("<",         &Machine::wordOCTDOWN);
       addWord("=",         &Machine::wordNATURALISE);
-      addWord(">",         &Machine::wordUPOCTAVE);
+      addWord(">",         &Machine::wordOCTUP);
       addWord("@",         &Machine::wordFINISH);
       addWord("\\[",       &Machine::wordSTARTWORD);
       addWord("]",         &Machine::wordENDWORD);
@@ -481,12 +481,8 @@ private:
    void wordHSSTR()      {}
 
    void wordBUILTIN()    {}
-   void wordSTARTGROUP() {}
-   void wordENDGROUP()   {}
    void wordSYSTEM()     {}
    void wordBUFFER()     {}
-   void wordOCTDOWN()    {}
-   void wordUPOCTAVE()   {}
    void wordFINISH()     {}
    void wordSTARTWORD()  {}
    void wordENDWORD()    {}
@@ -522,6 +518,8 @@ private:
 
    // SCORE WORDS
    void wordSCORE()      { score.reset(); }
+   void wordSTARTGROUP() { score.groupStart(); }
+   void wordENDGROUP()   { score.groupEnd(); }
    void wordKEY()        { score.keySig(true); }
    void wordENDKEY()     { score.keySig(false); }
    void wordOCTAVE()     { score.noteOctave(pop()); }
@@ -532,12 +530,14 @@ private:
    void wordSHARPEN()    { score.acid(+1); }
    void wordREST()       { score.rest(); }
    void wordLENGTHEN()   { score.tie(); }
+   void wordOCTUP()      { score.noteChangeOctave(+1); }
+   void wordOCTDOWN()    { score.noteChangeOctave(-1); }
+
    void wordTIE()        { }
+   void wordENDTIE()    {}
 
    void wordBAR()       {}
    void wordDURATION()  {}
-   void wordENDTIE()    {}
-
 
    void wordFLUSH()     {}
    void wordTEMPO()     {}

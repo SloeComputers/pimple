@@ -107,9 +107,12 @@ public:
          voice.tick();
    }
 
-   void schedule(uint8_t note_, uint8_t length_)
+   void schedule(unsigned n_, uint8_t note_, uint8_t length_)
    {
-      current_voice->schedule(note_, length_);
+      if (n_ >= voices.size())
+         return;
+
+      voices[n_]->schedule(note_, length_);
    }
 
    void debug()

@@ -23,7 +23,7 @@
 
 import math
 import sys
-import Table
+import table
 
 def phase_delta(octave, x):
     """ Convert Q4.12 octave value to Q0.32 phase increment """
@@ -42,25 +42,21 @@ def phase_delta(octave, x):
 
 
 # octave to phase delta table
-Table.gen('phase_delta',
-          bits       = 32,
+table.gen('phase_delta',
           func       = phase_delta,
+          typename  = "uint32_t",
           log2_size  = 16,
-          prefix     = '0x',
           fmt        = '08x')
 
-Table.gen('log_sine',
-          bits      = 8,
+table.gen('log_sine',
           func      = lambda i,x : int(math.sin(x * 2 * math.pi) * 0x7FFF + 0.5),
           log2_size = 16,
           typename  = "int16_t",
-          prefix    = '',
           fmt       = '6d')
 
-Table.gen('exp',
-          bits      = 16,
+table.gen('exp',
           func      = lambda i,x : (int(math.pow(2.0, i / 127) * 2048 + 0.5) << (i >> 10)) >> 13,
+          typename  = "uint16_t",
           log2_size = 7,
-          prefix    = '0x',
           fmt       = '04x')
 

@@ -25,16 +25,13 @@
 #include "STB/MIDIInstrument.h"
 
 template <unsigned N, typename VOICE, unsigned AMP_N = N>
-class Synth : public MIDI::Instrument
+class Synth : public MIDI::Instrument<N>
 {
 public:
    Synth(VOICE* voice_)
-      : MIDI::Instrument(N)
-      , voice(voice_)
+      : voice(voice_)
    {
    }
-
-   bool isAnyVoiceOn() const { return active != 0; }
 
    //! Get next sample
    int32_t getSample(unsigned first_voice_= 0,
@@ -63,36 +60,14 @@ public:
    }
 
 private:
-   signed allocVoice() const override
-   {
-      for(unsigned i = 0; i < N; ++i)
-      {
-         if (not voice[i].getGate()) return i;
-      }
-      return 0;
-   }
-
-   signed findVoice(uint8_t note_) const override
-   {
-      for(unsigned i = 0; i < N; ++i)
-      {
-         if (voice[i].isPlaying(note_)) return i;
-      }
-      return -1;
-   }
-
    void voiceOn(unsigned index_, uint8_t note_, uint8_t velocity_) override
    {
       voice[index_].noteOn(note_);
-
-      ++active;
    }
 
    void voiceOff(unsigned index_, uint8_t velocity_) override
    {
       voice[index_].noteOff();
-
-      --active;
    }
 
    void voicePitchBend(unsigned index_, int16_t value_) override
@@ -100,6 +75,6 @@ private:
       voice[index_].pitchBend(value_);
    }
 
-   VOICE*   voice;
-   unsigned active{0};
+   VOICE* voice;
 };
+

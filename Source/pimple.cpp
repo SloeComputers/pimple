@@ -1,30 +1,14 @@
-//------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 // Copyright (c) 2024 John D. Haughton
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//------------------------------------------------------------------------------
+// SPDX-License-Identifier: MIT
+//-------------------------------------------------------------------------------
 
 // \brief Synth for Raspberry Pi Pico (recreation of the Acorn Music 500)
 
 #include <cstdio>
 
-#include "hw/hw.h"
+#include "Hardware/picoX7/Config.h"
+#include "FilePortal.h"
 #include "AMPLE/Machine.h"
 
 #include "Synth.h"
@@ -36,22 +20,46 @@ static const unsigned NUM_VOICES       = 16;
 static const bool     MIDI_DEBUG       = false;
 
 
+static FilePortal                    file_portal{"PiMPLE"};
 static AMPLE::Machine                ample{};
 static Synth<NUM_VOICES,AMPLE::Chan> synth{ample.getChannels()};
-static hw::MidiIn                    midi_in{synth, MIDI_DEBUG};
-static hw::Led                       led{};
-static hw::Audio<SAMPLES_PER_TICK>   audio{DAC_FREQ};
 
 
-#if defined(HW_MIDI_USB_DEVICE)
+// --- Physical MIDI -----------------------------------------------------------
 
-static hw::MidiUSBDevice midi_usb {synth, 0x917E, "PIMPLE", MIDI_DEBUG};
+static hw::PhysMidi phys_midi{};
 
-extern "C" void IRQ_USBCTRL() { midi_usb.usb.irq(); }
+
+// --- USB MIDI ----------------------------------------------------------------
+
+#if defined(HW_USB_DEVICE)
+
+static hw::UsbFileMidi usb{0x91C0, "PiMPLE", file_portal};
+
+extern "C" void IRQ_USBCTRL() { usb.irq(); }
 
 #endif
 
+
+// --- 16x2 LCD display --------------------------------------------------------
+
+#if not defined(HW_LCD_NONE)
+
+static hw::Lcd lcd{};
+
+#endif
+
+
+// --- LED ---------------------------------------------------------------------
+
+static hw::Led led{};
+
+
+// --- DAC ---------------------------------------------------------------------
+
 static void hwTick();
+
+static hw::Audio<SAMPLES_PER_TICK>   audio{DAC_FREQ};
 
 #if defined(HW_DAC_I2S)
 
@@ -104,9 +112,9 @@ void hw::Audio<SAMPLES_PER_TICK>::getSamples(int16_t* buffer, unsigned n)
 
 static void hwTick()
 {
-   midi_in.tick();
-#if defined(HW_MIDI_USB_DEVICE)
-   midi_usb.tick();
+   phys_midi.tick();
+#if defined(HW_USB_DEVICE)
+   usb.tick();
 #endif
 
    synth.tick();
@@ -117,6 +125,8 @@ static void hwTick()
 }
 
 
+// --- Entry point -------------------------------------------------------------
+
 int main()
 {
    // Clear screen and cursor to home
@@ -124,22 +134,21 @@ int main()
    printf("\e[1,1H");
 
    printf("\n");
-   printf("Program  : PiMPLE\n");
-   printf("Hardware : %s\n", HW_DESCR);
-   printf("Author   : Copyright (c) 2024 John D. Haughton\n");
-   printf("License  : MIT\n");
-   printf("Version  : %s\n", PLT_VERSION);
-   printf("Commit   : %s\n", PLT_COMMIT);
-   printf("Built    : %s %s\n", __TIME__, __DATE__);
-   printf("Compiler : %s\n", __VERSION__);
+   puts(file_portal.genREADME());
    printf("\n");
 
 #if not defined(HW_LCD_NONE)
-   hw::Lcd lcd{};
-
    lcd.move(0, 0);
    lcd.print("PiMPLE");
 #endif
+
+#if defined(HW_USB_DEVICE)
+   usb.setDebug(MIDI_DEBUG);
+   usb.attachInstrument(1, synth);
+#endif
+
+   phys_midi.setDebug(MIDI_DEBUG);
+   phys_midi.attachInstrument(1, synth);
 
    audio.start();
 

@@ -8,7 +8,8 @@
 #include <cstdio>
 
 #include "Hardware/picoX7/Config.h"
-#include "FilePortal.h"
+#include "Hardware/FilePortal.h"
+
 #include "AMPLE/Machine.h"
 
 #include "Synth.h"
@@ -19,8 +20,9 @@ static const unsigned SAMPLES_PER_TICK = DAC_FREQ / TICK_RATE;  //!< DAC buffer 
 static const unsigned NUM_VOICES       = 16;
 static const bool     MIDI_DEBUG       = false;
 
+static hw::FilePortal file_portal{"picoFn",
+                                  "https://github.com/AnotherJohnH/pimple"};
 
-static FilePortal                    file_portal{"PiMPLE"};
 static AMPLE::Machine                ample{};
 static Synth<NUM_VOICES,AMPLE::Chan> synth{ample.getChannels()};
 
@@ -32,22 +34,14 @@ static hw::PhysMidi phys_midi{};
 
 // --- USB MIDI ----------------------------------------------------------------
 
-#if defined(HW_USB_DEVICE)
-
 static hw::UsbFileMidi usb{0x91C0, "PiMPLE", file_portal};
 
 extern "C" void IRQ_USBCTRL() { usb.irq(); }
 
-#endif
-
 
 // --- 16x2 LCD display --------------------------------------------------------
 
-#if not defined(HW_LCD_NONE)
-
 static hw::Lcd lcd{};
-
-#endif
 
 
 // --- LED ---------------------------------------------------------------------
@@ -57,9 +51,9 @@ static hw::Led led{};
 
 // --- DAC ---------------------------------------------------------------------
 
-static void hwTick();
-
 static hw::Audio<SAMPLES_PER_TICK>   audio{DAC_FREQ};
+
+static void hwTick();
 
 #if defined(HW_DAC_I2S)
 
@@ -113,9 +107,7 @@ void hw::Audio<SAMPLES_PER_TICK>::getSamples(int16_t* buffer, unsigned n)
 static void hwTick()
 {
    phys_midi.tick();
-#if defined(HW_USB_DEVICE)
    usb.tick();
-#endif
 
    synth.tick();
 
@@ -137,15 +129,11 @@ int main()
    puts(file_portal.genREADME());
    printf("\n");
 
-#if not defined(HW_LCD_NONE)
    lcd.move(0, 0);
    lcd.print("PiMPLE");
-#endif
 
-#if defined(HW_USB_DEVICE)
    usb.setDebug(MIDI_DEBUG);
    usb.attachInstrument(1, synth);
-#endif
 
    phys_midi.setDebug(MIDI_DEBUG);
    phys_midi.attachInstrument(1, synth);

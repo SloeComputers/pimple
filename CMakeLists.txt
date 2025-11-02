@@ -13,6 +13,5 @@ include(CTest)
 
 set(HARDWARE picoX7)
 
-add_subdirectory(Platform)
 add_subdirectory(Hardware)
 add_subdirectory(Source)

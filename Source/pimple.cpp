@@ -20,7 +20,7 @@ static const unsigned SAMPLES_PER_TICK = DAC_FREQ / TICK_RATE;  //!< DAC buffer 
 static const unsigned NUM_VOICES       = 16;
 static const bool     MIDI_DEBUG       = false;
 
-static hw::FilePortal file_portal{"picoFn",
+static hw::FilePortal file_portal{"pimple",
                                   "https://github.com/AnotherJohnH/pimple"};
 
 static AMPLE::Machine                ample{};
@@ -125,7 +125,7 @@ int main()
    printf("\033[2J\033[H");
 
    printf("\n");
-   puts(file_portal.genREADME());
+   puts(file_portal.addREADME("PiMPLE"));
    printf("\n");
 
    lcd.move(0, 0);

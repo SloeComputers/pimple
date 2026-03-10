@@ -4,13 +4,13 @@ A music synthesizer inspired by the Acorn Music 500.
 
 ## Status
 
-[![Build Status](https://github.com/AnotherJohnH/pico500/actions/workflows/build_on_push.yml/badge.svg)](https://github.com/AnotherJohnH/pico500/actions/workflows/build_on_push.yml)
+[![Build Status](https://github.com/SloeComputers/pico500/actions/workflows/build_on_push.yml/badge.svg)](https://github.com/AnotherJohnH/pico500/actions/workflows/build_on_push.yml)
 
 ## Software
 
 ### Dependencies
 
-+ https://github.com/AnotherJohnH/Platform
++ https://github.com/SloeComputers/Platform
 + arm-none-eabi-gcc
 + cmake
 + ninja (make works too)
@@ -20,11 +20,11 @@ A music synthesizer inspired by the Acorn Music 500.
 This repo uses git sub-modules, so checkout using --recurse to clone all the
 dependent source...
 
-    git clone --recurse https://github.com/AnotherJohnH/PIMPLE.git
+    git clone --recurse https://github.com/SloeComputers/PIMPLE.git
 
 or
 
-    git clone --recurse ssh://git@github.com/AnotherJohnH/PIMPLE.git
+    git clone --recurse ssh://git@github.com/SloeComputers/PIMPLE.git
 
 ### Build
 

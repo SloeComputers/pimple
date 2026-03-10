@@ -21,7 +21,7 @@ static const unsigned NUM_VOICES       = 16;
 static const bool     MIDI_DEBUG       = false;
 
 static hw::FilePortal file_portal{"pimple",
-                                  "https://github.com/AnotherJohnH/pimple"};
+                                  "https://github.com/SloeComputers/pimple"};
 
 static AMPLE::Machine                ample{};
 static Synth<NUM_VOICES,AMPLE::Chan> synth{ample.getChannels()};

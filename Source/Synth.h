@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "STB/MIDIInstrument.h"
+#include "MIDI/Instrument.h"
 
 template <unsigned N, typename VOICE, unsigned AMP_N = N>
 class Synth : public MIDI::Instrument

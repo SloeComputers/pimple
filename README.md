@@ -4,7 +4,7 @@ A music synthesizer inspired by the Acorn Music 500.
 
 ## Status
 
-[![Build Status](https://github.com/SloeComputers/pico500/actions/workflows/build_on_push.yml/badge.svg)](https://github.com/AnotherJohnH/pico500/actions/workflows/build_on_push.yml)
+[![Build Status](https://github.com/SloeComputers/pimple/actions/workflows/build_on_push.yml/badge.svg)](https://github.com/SloeComputers/pimple/actions/workflows/build_on_push.yml)
 
 ## Software
 

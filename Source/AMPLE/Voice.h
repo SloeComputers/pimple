@@ -52,12 +52,12 @@ public:
       if ((n_ % 2) == 1)
          return false;
 
-      if ((n_ < 0) || (chan_heap.avail() < n_))
+      if ((n_ < 0) || (signed(chan_heap.avail()) < n_))
          return false;
 
       chanFree();
 
-      for(size_t i = 0; i < n_; ++i)
+      for(Number i = 0; i < n_; ++i)
          chans.push_back(chan_heap.alloc());
 
       chanSelect(ON);
@@ -78,7 +78,7 @@ public:
       case EVEN: chan_mask = 0xAAAA & all_chans; return true;
 
       default:
-         if ((n_ >= 1) && (n_ <- chans.size()))
+         if ((n_ >= 1) && (n_ <- signed(chans.size())))
          {
             chan_mask = 1 << (n_ - 1);
             return true;

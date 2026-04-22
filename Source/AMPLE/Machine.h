@@ -443,7 +443,7 @@ private:
       StrStack<256> one{str_stack.pop()};
       Number        p = pop();
       str_stack.push(one.peek(), one.peek() + p);
-      if (p <= one.size())
+      if (p <= signed(one.size()))
          str_stack.push(one.peek() + p);
    }
 

@@ -34,12 +34,12 @@ public:
    //! Allocate voices to this player (AMPLE VOICES)
    bool voiceAlloc(Number n_)
    {
-      if ((n_ < 0) || (voice_heap.avail() < n_))
+      if ((n_ < 0) || (signed(voice_heap.avail()) < n_))
          return false;
 
       voiceFree();
       
-      for(size_t i = 0; i < n_; ++i)
+      for(Number i = 0; i < n_; ++i)
          voices.push_back(voice_heap.alloc());
 
       return true;
@@ -48,7 +48,7 @@ public:
    //! Select voice (AMPLE VOICE)
    bool voiceSelect(Number n_)
    {
-      if ((n_ < 0) || (n_ > voices.size()))
+      if ((n_ < 0) || (n_ > signed(voices.size())))
          return false;
 
       current_voice = n_ == 0 ? &dummy_voice

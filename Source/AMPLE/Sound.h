@@ -34,12 +34,12 @@ public:
    //! Allocate dynamic players
    bool playerAlloc(Number n_)
    {
-      if ((n_ < 0) || (player_heap.avail() < n_))
+      if ((n_ < 0) || (signed(player_heap.avail()) < n_))
          return false;
 
       playerFree();
 
-      for(size_t i = 0; i < n_; ++i)
+      for(Number i = 0; i < n_; ++i)
          players.push_back(player_heap.alloc());
 
       return true;
@@ -48,7 +48,7 @@ public:
    //! Select current player
    bool playerSelect(Number n_)
    {
-      if ((n_ < 0) || (n_ > players.size()))
+      if ((n_ < 0) || (n_ > signed(players.size())))
          return false;
 
       current_player = n_ == 0 ? &static_player

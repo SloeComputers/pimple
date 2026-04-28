@@ -5,7 +5,7 @@
 
 cmake_minimum_required(VERSION 3.20)
 
-project(PIMPLE
+project(pimple
         LANGUAGES CXX C ASM
         VERSION 0.1)
 
